@@ -1,0 +1,22 @@
+services:
+  mysql-8:
+    image: mysql:8
+    command: [
+      "mysqld",
+      "--character-set-server=utf8mb4",
+      "--collation-server=utf8mb4_unicode_ci",
+      "--bind-address=0.0.0.0",
+      "--require_secure_transport=ON",
+      "--ssl-ca=/etc/certs/root-ca.pem",
+      "--ssl-cert=/etc/certs/server-cert.pem",
+      "--ssl-key=/etc/certs/server-key.pem"
+    ]
+    ports:
+      - "127.0.0.1:3306:3306"
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=true
+      - MYSQL_DATABASE=example
+    volumes:
+      - type: bind
+        source: ./certs
+        target: /etc/certs/

@@ -1,0 +1,9 @@
+[package]
+name = "mysql-sqlx"
+version = "0.1.0"
+edition = "2021"
+authors = ["Norberto Lopes <nlopesml@gmail.com>"]
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"], default-features = false }
+database-schema = { path = "../../", features = ["sqlx", "mysql", "runtime-async-std"] }

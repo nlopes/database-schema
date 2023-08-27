@@ -1,0 +1,49 @@
+[package]
+name = "database-schema"
+version = "0.1.0"
+edition = "2021"
+description = "A library to dump a database schema into a file in SQL format"
+documentation = "https://docs.rs/database-schema"
+authors = ["Norberto Lopes <nlopesml@gmail.com>"]
+repository = "https://github.com/nlopes/database-schema.git"
+homepage = "https://github.com/nlopes/database-schema.git"
+license = "MIT OR Apache-2.0"
+keywords = ["database", "schema", "structuresql"]
+categories = ["database", "web-programming"]
+exclude = [".gitignore", ".github/", "README.tpl"]
+
+[workspace]
+members = [".", "examples/*"]
+default-members = ["."]
+resolver = "2"
+
+[features]
+default = []
+sqlx = ["dep:sqlx", "sqlx?/tls-native-tls"]
+diesel = ["dep:diesel", "dep:diesel_migrations"]
+macros = []
+runtime-async-std = ["sqlx?/runtime-async-std", "dep:async-std"]
+runtime-tokio = ["sqlx?/runtime-tokio", "dep:tokio"]
+sqlite = ["sqlx?/sqlite", "diesel?/sqlite", "diesel_migrations?/sqlite"]
+mysql = ["sqlx?/mysql", "diesel?/mysql", "diesel_migrations?/mysql", "url", "percent-encoding"]
+postgres = ["sqlx?/postgres", "url", "percent-encoding"]
+
+[dependencies]
+async-std = { version = "1", optional = true } # this has to include default due to task::block_on usage
+chrono = { version = "0.4", features = ["clock"], default-features = false }
+diesel = { version = "2.1", optional = true, default-features = false }
+diesel_migrations = { version = "2.1", optional = true, default-features = false}
+http = "0.2.9"
+percent-encoding = { version = "2.3", optional = true }
+sqlx = { version = "0.7", features = ["migrate", "macros"], optional = true, default-features = false }
+thiserror = "1"
+tokio = { version = "1", features = ["rt-multi-thread"], optional = true, default-features = false }
+tracing = { version = "0.1", default-features = false }
+url = { version = "2.1", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros"], default-features = false }
+
+[package.metadata.docs.rs]
+features = ["sqlite", "sqlx", "macros", "runtime-async-std"]
+rustdoc-args = ["--cfg", "docsrs"]

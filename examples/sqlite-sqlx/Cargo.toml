@@ -1,0 +1,8 @@
+[package]
+name = "sqlite-sqlx"
+version = "0.1.0"
+edition = "2021"
+authors = ["Norberto Lopes <nlopesml@gmail.com>"]
+
+[dependencies]
+database-schema = { path = "../../", features = ["sqlx", "sqlite", "runtime-async-std", "macros"] }
