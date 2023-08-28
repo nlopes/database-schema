@@ -15,7 +15,7 @@ It takes inspiration by the ruby on rails [schema dump].
 ```rust
 use std::path::PathBuf;
 
-database_structure::generate_structure_sql(PathBuf::from("./structure.sql"));
+database_schema::generate_without_runtime_using_defaults!();
 ```
 
 
