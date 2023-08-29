@@ -1,6 +1,6 @@
 [package]
 name = "database-schema"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A library to dump a database schema into a file in SQL format"
 documentation = "https://docs.rs/database-schema"
