@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 #![deny(
     missing_copy_implementations,
     missing_debug_implementations,
@@ -11,8 +12,7 @@
     unused_results,
     variant_size_differences
 )]
-#![cfg_attr(docsrs, feature(doc_cfg))]
-#![cfg_attr(docsrs, doc = include_str!("../README.md"), allow(unused_attributes))]
+#![cfg_attr(docsrs, feature(doc_cfg), allow(unused_attributes))]
 
 #[cfg(not(any(feature = "sqlite", feature = "postgres", feature = "mysql"),))]
 compile_error!(

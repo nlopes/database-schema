@@ -12,7 +12,7 @@ It takes inspiration by the ruby on rails [schema dump].
 
 ## Usage
 
-```rust
+```rust,ignore
 use std::path::PathBuf;
 
 database_schema::generate_without_runtime_using_defaults!();
@@ -90,23 +90,23 @@ structure of a database at compile time. This is useful for generating the SQL f
 database-schema = { version = "0.1", features = ["sqlite", "diesel", "macros"] }
 ```
 
-```rust
-use database_schema::macros::generate_without_runtime;
+```rust,ignore
+use database_schema::generate_without_runtime;
 
 let sql = generate_without_runtime!("./migrations", "structure.sql");
 ```
 
 The above is strictly equivalent to calling:
 
-```rust
-use database_schema::macros::generate_without_runtime_using_defaults;
+```rust,ignore
+use database_schema::generate_without_runtime_using_defaults;
 
 let sql = generate_without_runtime!();
 ```
 
 ## Customization
 
-```rust
+```rust,ignore
 use database_schema::DatabaseSchemaBuilder;
 
 let migrations_path = "db/migrations";
