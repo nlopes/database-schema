@@ -11,6 +11,7 @@
     unused_results,
     variant_size_differences
 )]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(docsrs, doc = include_str!("../README.md"), allow(unused_attributes))]
 
 //! This crate provides a simple way to dump a database structure to a file, in SQL
