@@ -1,0 +1,12 @@
+services:
+  postgres-14:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: 14
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    command: -c ssl=on -c ssl_cert_file=/var/lib/postgresql/certs/server-cert.pem -c ssl_key_file=/var/lib/postgresql/certs/server-key.pem -c  ssl_ca_file=/var/lib/postgresql/certs/root-ca.pem
