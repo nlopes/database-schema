@@ -29,8 +29,9 @@ mod sqlite;
 #[cfg_attr(docsrs, doc(cfg(feature = "mysql")))]
 mod mysql;
 
-//#[cfg(feature = "postgres")]
-//mod postgres;
+#[cfg(feature = "postgres")]
+#[cfg_attr(docsrs, doc(cfg(feature = "mysql")))]
+mod postgres;
 
 #[cfg(all(
     feature = "macros",
@@ -72,8 +73,8 @@ impl Default for ConnectionUrl {
         let conn = ConnectionUrl(String::from(sqlite::DEFAULT_CONNECTION_URL));
         #[cfg(feature = "mysql")]
         let conn = ConnectionUrl(String::from(mysql::DEFAULT_CONNECTION_URL));
-        //#[cfg(feature = "postgres")]
-        //let conn = ConnectionUrl(String::from(postgres::DEFAULT_CONNECTION_URL));
+        #[cfg(feature = "postgres")]
+        let conn = ConnectionUrl(String::from(postgres::DEFAULT_CONNECTION_URL));
 
         conn
     }
@@ -158,10 +159,10 @@ impl DatabaseSchema {
     pub async fn dump(&self) -> Result<(), Error> {
         #[cfg(all(feature = "mysql", any(feature = "sqlx", feature = "diesel")))]
         use crate::mysql::write_structure_sql;
+        #[cfg(all(feature = "postgres", any(feature = "sqlx", feature = "diesel")))]
+        use crate::postgres::write_structure_sql;
         #[cfg(all(feature = "sqlite", any(feature = "sqlx", feature = "diesel")))]
         use crate::sqlite::write_structure_sql;
-        //#[cfg(all(feature = "postgres", any(feature = "sqlx", feature = "diesel")))]
-        //use crate::postgres::write_structure_sql;
 
         write_structure_sql(
             &self.0.connection_url.0,

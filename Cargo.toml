@@ -26,7 +26,7 @@ runtime-async-std = ["sqlx?/runtime-async-std", "dep:async-std"]
 runtime-tokio = ["sqlx?/runtime-tokio", "dep:tokio"]
 sqlite = ["sqlx?/sqlite", "diesel?/sqlite", "diesel_migrations?/sqlite"]
 mysql = ["sqlx?/mysql", "diesel?/mysql", "diesel_migrations?/mysql", "url", "percent-encoding"]
-postgres = ["sqlx?/postgres", "url", "percent-encoding"]
+postgres = ["sqlx?/postgres", "diesel?/postgres", "url", "percent-encoding"]
 
 [dependencies]
 async-std = { version = "1", optional = true } # this has to include default due to task::block_on usage
