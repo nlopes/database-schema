@@ -25,9 +25,9 @@ pub(crate) async fn write_structure_sql<P: AsRef<std::path::Path>, Q: AsRef<std:
 #[cfg(feature = "sqlx")]
 mod sqlx;
 #[cfg(feature = "sqlx")]
-use sqlx::fetch_structure_sql;
+use crate::sqlite::sqlx::fetch_structure_sql;
 #[cfg(feature = "sqlx")]
-pub(crate) use sqlx::DEFAULT_CONNECTION_URL;
+pub(crate) use crate::sqlite::sqlx::DEFAULT_CONNECTION_URL;
 
 #[cfg(feature = "diesel")]
 mod diesel;
