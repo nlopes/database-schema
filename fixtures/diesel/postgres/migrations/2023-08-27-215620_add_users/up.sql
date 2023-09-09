@@ -1,0 +1,5 @@
+CREATE TABLE diesel_users (
+  id TEXT PRIMARY KEY NOT NULL,
+  email TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
