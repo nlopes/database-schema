@@ -42,12 +42,10 @@ mod tests {
         Ok(())
     }
 
-    // IMPORTANT: The tests below this notice will fail if mysqldump is not found in the
-    // PATH.
     #[tokio::test]
     async fn test_run_found() -> Result<(), crate::Error> {
         use super::{run, Command};
-        let result = run(Command::new("mysqldump").arg("--version")).await;
+        let result = run(Command::new("which").arg("which")).await;
         assert!(matches!(result, Ok(())));
         Ok(())
     }
@@ -55,10 +53,8 @@ mod tests {
     #[tokio::test]
     async fn test_run_invalid_arguments() -> Result<(), crate::Error> {
         use super::{run, Command};
-        let result = run(Command::new("mysqldump").arg("--norberto")).await;
-        assert!(matches!(
-            result,
-            Err(crate::Error::CommandRunError(error_message)) if error_message == "output: \nstderr: mysqldump: [ERROR] unknown option '--norberto'.\n"));
+        let result = run(Command::new("which").arg("--norberto")).await;
+        assert!(matches!(result, Err(crate::Error::CommandRunError(_))));
         Ok(())
     }
 }

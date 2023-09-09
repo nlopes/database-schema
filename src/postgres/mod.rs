@@ -62,3 +62,44 @@ async fn migrate<P: AsRef<std::path::Path>>(
         .map(|_| ());
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    async fn call_write_structure_sql<M: AsRef<str>, D: AsRef<str>>(
+        fixtures_path: M,
+        destination_filename: D,
+    ) -> Result<(), crate::error::Error> {
+        let destination_path = std::env::temp_dir().join(destination_filename.as_ref());
+        let migrations_path = std::path::PathBuf::from(fixtures_path.as_ref()).join("migrations");
+        let _ = super::write_structure_sql(
+            super::DEFAULT_CONNECTION_URL,
+            migrations_path,
+            &destination_path,
+        )
+        .await?;
+        let expected = std::fs::read_to_string(dbg!(format!(
+            "./{}/{}",
+            fixtures_path.as_ref(),
+            destination_filename.as_ref()
+        )))?;
+        let contents = std::fs::read_to_string(destination_path)?;
+        assert_eq!(contents, expected);
+        Ok(())
+    }
+
+    #[cfg(all(feature = "sqlx", feature = "postgres"))]
+    #[tokio::test]
+    async fn test_write_structure_sql() -> Result<(), crate::error::Error> {
+        call_write_structure_sql("./fixtures/sqlx/postgres", "sqlx-postgres-structure.sql").await
+    }
+
+    #[cfg(all(feature = "diesel", feature = "postgres"))]
+    #[tokio::test]
+    async fn test_write_structure_sql() -> Result<(), crate::error::Error> {
+        call_write_structure_sql(
+            "./fixtures/diesel/postgres",
+            "diesel-postgres-structure.sql",
+        )
+        .await
+    }
+}
