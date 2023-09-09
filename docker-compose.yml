@@ -1,3 +1,5 @@
+# IMPORTANT: if you change the data folders below, make sure you also change their cleanup
+# inside the `.github/workflows/ci.yml` file
 services:
   postgres-15:
     image: postgres:15-alpine

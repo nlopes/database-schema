@@ -24,18 +24,22 @@ jobs:
             nightly: true
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
-    - name: Install toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-          profile: minimal
-          toolchain: ${{ matrix.toolchain }}
-          override: true
-          components: clippy, rustfmt
+    - name: Install rust tooling
+      run: |
+        rustup update ${{ matrix.toolchain }}
+        rustup component add --toolchain ${{ matrix.toolchain }} clippy rustfmt
+
+    - name: Print rust tooling information
+      run: |
+        rustup run ${{ matrix.toolchain }} rustc --version
+        rustup run ${{ matrix.toolchain }} cargo --version --verbose
+        rustup run ${{ matrix.toolchain }} cargo clippy --version
+        rustup run ${{ matrix.toolchain }} cargo fmt --version
 
     - name: Cache cargo registry
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: |
           ~/.cargo/registry
@@ -43,56 +47,35 @@ jobs:
         key: rust_${{ matrix.toolchain }}-cargo-${{ hashFiles('**/Cargo.toml') }}
 
     - name: Run cargo fmt
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all -- --check
+      run: rustup run ${{ matrix.toolchain }} cargo fmt --all -- --check
 
     - name: Run test - sqlite | sqlx | runtime-async-std | macros
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --features sqlite,sqlx,runtime-async-std,macros --all-targets --verbose
+      run: rustup run ${{ matrix.toolchain }} cargo test --features sqlite,sqlx,runtime-async-std,macros --all-targets --verbose
 
     - name: Run test - sqlite | diesel | runtime-async-std | macros
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --features sqlite,diesel,runtime-async-std,macros --all-targets --verbose
+      run: rustup run ${{ matrix.toolchain }} cargo test --features sqlite,diesel,runtime-async-std,macros --all-targets --verbose
 
     - name: Run test - sqlite | diesel
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --features sqlite,diesel --all-targets --verbose
+      run: rustup run ${{ matrix.toolchain }} cargo test --features sqlite,diesel --all-targets --verbose
 
     - name: Start containers for database tests
       run: docker compose -f "docker-compose.yml" up -d
 
     - name: Run test - mysql | diesel
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --features mysql,diesel --all-targets --verbose
+      run: rustup run ${{ matrix.toolchain }} cargo test --features mysql,diesel --all-targets --verbose
 
     - name: Run test - mysql | sqlx | runtime-async-std
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --features mysql,sqlx,runtime-async-std --all-targets --verbose
+      run: rustup run ${{ matrix.toolchain }} cargo test --features mysql,sqlx,runtime-async-std --all-targets --verbose
 
     - name: Stop containers for database tests
       if: always()
-      run: docker compose -f "docker-compose.yml" down --volumes
+      run: |
+        docker compose -f "docker-compose.yml" down --volumes
+        sudo rm -rf .data/{postgresql-15,mysql-8}
 
     - name: Run doc tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --features sqlite,sqlx,runtime-async-std,macros --doc --verbose
+      run: rustup run ${{ matrix.toolchain }} cargo test --features sqlite,sqlx,runtime-async-std,macros --doc --verbose
 
     - name: Run clippy
-      uses: actions-rs/cargo@v1
-      with:
-        command: clippy
-        args: --features sqlite,sqlx,runtime-async-std,macros
+      run: rustup run ${{ matrix.toolchain }} cargo clippy --features sqlite,sqlx,runtime-async-std,macros -- -Dwarnings
+
