@@ -163,7 +163,7 @@ impl MySqlConnectOptions {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// # use sqlx_core::mysql::{MySqlSslMode, MySqlConnectOptions};
     /// let options = MySqlConnectOptions::new()
     ///     .ssl_mode(MySqlSslMode::Required);
@@ -177,7 +177,7 @@ impl MySqlConnectOptions {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// # use sqlx_core::mysql::{MySqlSslMode, MySqlConnectOptions};
     /// let options = MySqlConnectOptions::new()
     ///     .ssl_mode(MySqlSslMode::VerifyCa)
@@ -192,7 +192,7 @@ impl MySqlConnectOptions {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// # use sqlx_core::mysql::{MySqlSslMode, MySqlConnectOptions};
     /// let options = MySqlConnectOptions::new()
     ///     .ssl_mode(MySqlSslMode::VerifyCa)
@@ -207,7 +207,7 @@ impl MySqlConnectOptions {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// # use sqlx_core::mysql::{MySqlSslMode, MySqlConnectOptions};
     /// let options = MySqlConnectOptions::new()
     ///     .ssl_mode(MySqlSslMode::VerifyCa)

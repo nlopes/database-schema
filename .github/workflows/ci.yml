@@ -66,6 +66,25 @@ jobs:
         command: test
         args: --features sqlite,diesel --all-targets --verbose
 
+    - name: Start containers for database tests
+      run: docker compose -f "docker-compose.yml" up -d
+
+    - name: Run test - mysql | diesel
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --features mysql,diesel --all-targets --verbose
+
+    - name: Run test - mysql | sqlx | runtime-async-std
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --features mysql,sqlx,runtime-async-std --all-targets --verbose
+
+    - name: Stop containers for database tests
+      if: always()
+      run: docker compose -f "docker-compose.yml" down --volumes
+
     - name: Run doc tests
       uses: actions-rs/cargo@v1
       with:

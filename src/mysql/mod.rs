@@ -1,6 +1,6 @@
 //! Implementation of the `mysql` feature
 
-pub(crate) const DEFAULT_CONNECTION_URL: &str = "mysql://root:@localhost:3306";
+pub(crate) const DEFAULT_CONNECTION_URL: &str = "mysql://root:@127.0.0.1:3306/mysql";
 
 use percent_encoding::percent_decode_str;
 
@@ -158,4 +158,41 @@ async fn migrate<P: AsRef<std::path::Path>>(
         .run_pending_migrations(migrations)
         .map(|_| ());
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(all(feature = "sqlx", feature = "mysql"))]
+    #[tokio::test]
+    async fn test_write_structure_sql() -> Result<(), crate::error::Error> {
+        let destination_path = std::env::temp_dir().join("sqlx-mysql-structure.sql");
+        let migrations_path = std::path::PathBuf::from("./fixtures/sqlx/mysql/migrations");
+        let _ = super::write_structure_sql(
+            super::DEFAULT_CONNECTION_URL,
+            migrations_path,
+            &destination_path,
+        )
+        .await?;
+        let contents = std::fs::read_to_string(destination_path)?;
+
+        assert!(contents.contains("CREATE TABLE `sqlx_users` (\n  `id` varchar(32) NOT NULL,\n  `email` text NOT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n"));
+        Ok(())
+    }
+
+    #[cfg(all(feature = "diesel", feature = "mysql"))]
+    #[tokio::test]
+    async fn test_write_structure_sql() -> Result<(), crate::error::Error> {
+        let destination_path = std::env::temp_dir().join("diesel-mysql-structure.sql");
+        let migrations_path = std::path::PathBuf::from("./fixtures/diesel/mysql/migrations");
+        let _ = super::write_structure_sql(
+            super::DEFAULT_CONNECTION_URL,
+            migrations_path,
+            &destination_path,
+        )
+        .await?;
+        let contents = std::fs::read_to_string(destination_path)?;
+
+        assert!(contents.contains("CREATE TABLE `diesel_users` (\n  `id` varchar(32) NOT NULL,\n  `email` text NOT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n"));
+        Ok(())
+    }
 }
