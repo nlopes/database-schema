@@ -1,10 +1,3 @@
---
--- PostgreSQL database dump
---
-
--- Dumped from database version 15.2
--- Dumped by pg_dump version 15.4 (Homebrew)
-
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -31,20 +24,6 @@ CREATE TABLE public.__diesel_schema_migrations (
 
 
 --
--- Name: _sqlx_migrations; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public._sqlx_migrations (
-    version bigint NOT NULL,
-    description text NOT NULL,
-    installed_on timestamp with time zone DEFAULT now() NOT NULL,
-    success boolean NOT NULL,
-    checksum bytea NOT NULL,
-    execution_time bigint NOT NULL
-);
-
-
---
 -- Name: diesel_users; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -52,17 +31,6 @@ CREATE TABLE public.diesel_users (
     id text NOT NULL,
     email text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: sqlx_users; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.sqlx_users (
-    id character varying(32) NOT NULL,
-    email text NOT NULL,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 
@@ -75,27 +43,11 @@ ALTER TABLE ONLY public.__diesel_schema_migrations
 
 
 --
--- Name: _sqlx_migrations _sqlx_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public._sqlx_migrations
-    ADD CONSTRAINT _sqlx_migrations_pkey PRIMARY KEY (version);
-
-
---
 -- Name: diesel_users diesel_users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.diesel_users
     ADD CONSTRAINT diesel_users_pkey PRIMARY KEY (id);
-
-
---
--- Name: sqlx_users sqlx_users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.sqlx_users
-    ADD CONSTRAINT sqlx_users_pkey PRIMARY KEY (id);
 
 
 --

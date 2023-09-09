@@ -17,6 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        postgresql-version: [14]
         toolchain: [ 'stable' ]
         nightly: [false]
         include:
@@ -37,6 +38,14 @@ jobs:
         rustup run ${{ matrix.toolchain }} cargo --version --verbose
         rustup run ${{ matrix.toolchain }} cargo clippy --version
         rustup run ${{ matrix.toolchain }} cargo fmt --version
+    - name: Install PostgreSQL client version matching docker-compose
+      env:
+        POSTGRESQL_VERSION: ${{ matrix.postgresql-version }}
+      run: |
+        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        sudo apt-get update
+        sudo apt-get -y install --no-install-recommends "postgresql-client-${POSTGRESQL_VERSION}"
 
     - name: Cache cargo registry
       uses: actions/cache@v3
@@ -67,11 +76,22 @@ jobs:
     - name: Run test - mysql | sqlx | runtime-async-std
       run: rustup run ${{ matrix.toolchain }} cargo test --features mysql,sqlx,runtime-async-std --all-targets --verbose
 
+    - name: Run test - postgres | diesel
+      run: |
+        rustup run ${{ matrix.toolchain }} cargo test --features postgres,diesel --all-targets --verbose
+        psql "postgresql://root:@127.0.0.1:5432/postgres" -c "DROP TABLE __diesel_schema_migrations,diesel_users"
+
+    - name: Run test - postgres | sqlx | runtime-async-std
+      run: |
+        export PATH="/usr/lib/postgresql/${POSTGRESQL_VERSION}/bin:$PATH"
+        rustup run ${{ matrix.toolchain }} cargo test --features postgres,sqlx,runtime-async-std --all-targets --verbose
+        psql "postgresql://root:@127.0.0.1:5432/postgres" -c "DROP TABLE _sqlx_migrations,sqlx_users"
+
     - name: Stop containers for database tests
       if: always()
       run: |
         docker compose -f "docker-compose.yml" down --volumes
-        sudo rm -rf .data/{postgresql-15,mysql-8}
+        sudo rm -rf .data/{postgresql-${POSTGRESQL_VERSION},mysql-8}
 
     - name: Run doc tests
       run: rustup run ${{ matrix.toolchain }} cargo test --features sqlite,sqlx,runtime-async-std,macros --doc --verbose
