@@ -1,15 +1,15 @@
 # IMPORTANT: if you change the data folders below, make sure you also change their cleanup
 # inside the `.github/workflows/ci.yml` file
 services:
-  postgres-15:
-    image: postgres:15-alpine
+  postgres-14:
+    image: postgres:14-alpine
     ports:
       - "127.0.0.1:5432:5432"
     environment:
       - POSTGRES_USER=root
       - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
-      - .data/postgresql-15/:/var/lib/postgresql
+      - .data/postgresql-14/:/var/lib/postgresql
   mysql-8:
     image: mysql:8
     ports:

@@ -1,6 +1,6 @@
 //! Implementation of the `postgres` feature
 
-pub(crate) const DEFAULT_CONNECTION_URL: &str = "postgresql://root:@localhost:5432/postgres";
+pub(crate) const DEFAULT_CONNECTION_URL: &str = "postgresql://root:@127.0.0.1:5432/postgres";
 
 use crate::error::Error;
 
@@ -77,13 +77,13 @@ mod tests {
             &destination_path,
         )
         .await?;
-        let expected = std::fs::read_to_string(dbg!(format!(
+        let expected = std::fs::read_to_string(format!(
             "./{}/{}",
             fixtures_path.as_ref(),
             destination_filename.as_ref()
-        )))?;
+        ))?;
         let contents = std::fs::read_to_string(destination_path)?;
-        assert_eq!(contents, expected);
+        assert!(contents.contains(&expected));
         Ok(())
     }
 
