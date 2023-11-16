@@ -33,7 +33,7 @@ async-std = { version = "1", optional = true } # this has to include default due
 chrono = { version = "0.4", features = ["clock"], default-features = false }
 diesel = { version = "2.1", optional = true, default-features = false }
 diesel_migrations = { version = "2.1", optional = true, default-features = false}
-http = "0.2.9"
+http = "1.0.0"
 percent-encoding = { version = "2.3", optional = true }
 sqlx = { version = "0.7", features = ["migrate", "macros"], optional = true, default-features = false }
 thiserror = "1"
