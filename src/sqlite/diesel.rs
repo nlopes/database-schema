@@ -17,7 +17,7 @@ pub(crate) async fn fetch_structure_sql<P: AsRef<std::path::Path>>(
     Ok(fetch_structure(&mut conn).await?)
 }
 
-async fn fetch_structure(
+pub(crate) async fn fetch_structure(
     conn: &mut diesel::SqliteConnection,
 ) -> Result<String, diesel::result::Error> {
     use diesel::{sql_query, QueryableByName, RunQueryDsl};

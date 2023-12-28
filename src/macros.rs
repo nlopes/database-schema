@@ -30,6 +30,17 @@ macro_rules! generate_without_runtime_using_defaults {
     };
 }
 
+/// Generate an in-memory schema dump for sqlite.
+#[macro_export]
+macro_rules! sqlite_dump {
+    () => {
+        $crate::macros::__generate_within_runtime(
+            ::std::path::PathBuf::from("./migrations"),
+            ::std::path::PathBuf::from("./structure.sql"),
+        );
+    };
+}
+
 /// Generate a structure.sql file using migrations from the `migrations_path` folder.
 /// DO NOT USE THIS DIRECTLY. Use the `generate!` macro instead.
 #[doc(hidden)]
