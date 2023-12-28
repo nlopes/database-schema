@@ -18,7 +18,9 @@ pub(crate) async fn fetch_structure_sql<P: AsRef<std::path::Path>>(
     fetch_structure(&mut conn).await
 }
 
-async fn fetch_structure(conn: &mut sqlx::sqlite::SqliteConnection) -> Result<String, sqlx::Error> {
+pub(crate) async fn fetch_structure(
+    conn: &mut sqlx::sqlite::SqliteConnection,
+) -> Result<String, sqlx::Error> {
     use sqlx::Row;
     let structure_dump = sqlx::query(super::SQLITE_SCHEMA_QUERY)
         .fetch_all(conn)

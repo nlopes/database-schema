@@ -23,7 +23,7 @@ compile_error!("At least one of the following features must be enabled: sqlx or 
 
 #[cfg(feature = "sqlite")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sqlite")))]
-mod sqlite;
+pub mod sqlite;
 
 #[cfg(feature = "mysql")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mysql")))]
@@ -154,6 +154,10 @@ impl DatabaseSchemaBuilder {
     }
 }
 
+#[cfg(all(
+    any(feature = "sqlite", feature = "postgres", feature = "mysql"),
+    any(feature = "sqlx", feature = "diesel")
+))]
 impl DatabaseSchema {
     /// Dump the database schema.
     pub async fn dump(&self) -> Result<(), Error> {
