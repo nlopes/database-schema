@@ -12,7 +12,7 @@ use std::str::FromStr;
 /// Options for controlling the desired security state of the connection to the MySQL server.
 ///
 /// It is used by the [`ssl_mode`](super::MySqlConnectOptions::ssl_mode) method.
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub enum MySqlSslMode {
     /// Establish an unencrypted connection.
     Disabled,
@@ -21,6 +21,7 @@ pub enum MySqlSslMode {
     /// back to an unencrypted connection if an encrypted connection cannot be established.
     ///
     /// This is the default if `ssl_mode` is not specified.
+    #[default]
     Preferred,
 
     /// Establish an encrypted connection if the server supports encrypted connections.
@@ -50,12 +51,6 @@ impl std::fmt::Display for MySqlSslMode {
     }
 }
 
-impl Default for MySqlSslMode {
-    fn default() -> Self {
-        MySqlSslMode::Preferred
-    }
-}
-
 impl FromStr for MySqlSslMode {
     type Err = String;
 
@@ -68,7 +63,7 @@ impl FromStr for MySqlSslMode {
             "verify_identity" => MySqlSslMode::VerifyIdentity,
 
             _ => {
-                return Err(format!("unknown value {s:?} for `ssl_mode`").into());
+                return Err(format!("unknown value {s:?} for `ssl_mode`"));
             }
         })
     }

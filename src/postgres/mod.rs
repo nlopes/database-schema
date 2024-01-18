@@ -71,7 +71,7 @@ mod tests {
     ) -> Result<(), crate::error::Error> {
         let destination_path = std::env::temp_dir().join(destination_filename.as_ref());
         let migrations_path = std::path::PathBuf::from(fixtures_path.as_ref()).join("migrations");
-        let _ = super::write_structure_sql(
+        super::write_structure_sql(
             super::DEFAULT_CONNECTION_URL,
             migrations_path,
             &destination_path,

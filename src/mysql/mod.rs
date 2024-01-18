@@ -77,7 +77,7 @@ fn extract_connect_options(connection_url: &str) -> Result<MySqlConnectOptions, 
     let username = url.username();
     if !username.is_empty() {
         options = options.username(
-            &*percent_decode_str(username)
+            &percent_decode_str(username)
                 .decode_utf8()
                 .map_err(Error::UriConfigurationDecoding)?,
         );
@@ -85,7 +85,7 @@ fn extract_connect_options(connection_url: &str) -> Result<MySqlConnectOptions, 
 
     if let Some(password) = url.password() {
         options = options.password(
-            &*percent_decode_str(password)
+            &percent_decode_str(password)
                 .decode_utf8()
                 .map_err(Error::UriConfigurationDecoding)?,
         );
@@ -167,7 +167,7 @@ mod tests {
     async fn test_write_structure_sql() -> Result<(), crate::error::Error> {
         let destination_path = std::env::temp_dir().join("sqlx-mysql-structure.sql");
         let migrations_path = std::path::PathBuf::from("./fixtures/sqlx/mysql/migrations");
-        let _ = super::write_structure_sql(
+        super::write_structure_sql(
             super::DEFAULT_CONNECTION_URL,
             migrations_path,
             &destination_path,
@@ -184,7 +184,7 @@ mod tests {
     async fn test_write_structure_sql() -> Result<(), crate::error::Error> {
         let destination_path = std::env::temp_dir().join("diesel-mysql-structure.sql");
         let migrations_path = std::path::PathBuf::from("./fixtures/diesel/mysql/migrations");
-        let _ = super::write_structure_sql(
+        super::write_structure_sql(
             super::DEFAULT_CONNECTION_URL,
             migrations_path,
             &destination_path,
