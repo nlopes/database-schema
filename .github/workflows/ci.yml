@@ -97,5 +97,13 @@ jobs:
       run: rustup run ${{ matrix.toolchain }} cargo test --features sqlite,sqlx,runtime-async-std,macros --doc --verbose
 
     - name: Run clippy
-      run: rustup run ${{ matrix.toolchain }} cargo clippy --features sqlite,sqlx,runtime-async-std,macros -- -Dwarnings
-
+      run: |
+        rustup run ${{ matrix.toolchain }} cargo clippy --features sqlite,sqlx,runtime-async-std,macros --all-targets -- -Dwarnings
+        rustup run ${{ matrix.toolchain }} cargo clippy --features postgres,sqlx,runtime-async-std,macros --all-targets -- -Dwarnings
+        rustup run ${{ matrix.toolchain }} cargo clippy --features mysql,sqlx,runtime-async-std,macros --all-targets -- -Dwarnings
+        rustup run ${{ matrix.toolchain }} cargo clippy --features sqlite,diesel --all-targets -- -Dwarnings
+        rustup run ${{ matrix.toolchain }} cargo clippy --features postgres,diesel --all-targets -- -Dwarnings
+        rustup run ${{ matrix.toolchain }} cargo clippy --features mysql,diesel --all-targets -- -Dwarnings
+        rustup run ${{ matrix.toolchain }} cargo clippy --features sqlite,diesel,runtime-async-std,macros --all-targets -- -Dwarnings
+        rustup run ${{ matrix.toolchain }} cargo clippy --features postgres,diesel,runtime-async-std,macros --all-targets -- -Dwarnings
+        rustup run ${{ matrix.toolchain }} cargo clippy --features mysql,diesel,runtime-async-std,macros --all-targets -- -Dwarnings
