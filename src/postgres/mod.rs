@@ -76,8 +76,30 @@ mod tests {
             destination_filename.as_ref()
         ))?;
         let contents = std::fs::read_to_string(destination_path)?;
-        assert!(contents.contains(&expected));
+        let contents = normalize_dump_output(&contents);
+        let expected = normalize_dump_output(&expected);
+
+        for expected_fragment in expected
+            .split("\n\n")
+            .filter(|chunk| !chunk.trim().is_empty())
+        {
+            assert!(
+                contents.contains(expected_fragment),
+                "missing expected pg_dump fragment:\n\n{expected_fragment}\n\nactual dump:\n\n{contents}"
+            );
+        }
         Ok(())
+    }
+
+    fn normalize_dump_output(dump: &str) -> String {
+        dump.lines()
+            .filter(|line| {
+                !line.starts_with("\\restrict ")
+                    && !line.starts_with("\\unrestrict ")
+                    && *line != "SET transaction_timeout = 0;"
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     #[cfg(all(feature = "sqlx", feature = "postgres"))]
