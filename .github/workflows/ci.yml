@@ -13,6 +13,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.nightly }}
+    env:
+      POSTGRESQL_VERSION: ${{ matrix.postgresql-version }}
 
     strategy:
       fail-fast: false
@@ -21,7 +23,8 @@ jobs:
         toolchain: [ 'stable' ]
         nightly: [false]
         include:
-          - toolchain: 'nightly'
+          - postgresql-version: 14
+            toolchain: 'nightly'
             nightly: true
 
     steps:
@@ -78,6 +81,7 @@ jobs:
 
     - name: Run test - postgres | diesel
       run: |
+        export PATH="/usr/lib/postgresql/${POSTGRESQL_VERSION}/bin:$PATH"
         rustup run ${{ matrix.toolchain }} cargo test --features postgres,diesel --all-targets --verbose
         psql "postgresql://root:@127.0.0.1:5432/postgres" -c "DROP TABLE __diesel_schema_migrations,diesel_users"
 

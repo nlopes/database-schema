@@ -3,10 +3,10 @@
 //! It provides the following macros:
 //!
 //! * `generate!` - Generate a `destination_path` file using migrations from the provided
-//! `migrations_path` folder.
+//!   `migrations_path` folder.
 //!
 //! * `generate_using_defaults!` - Generate a `./structure.sql` file using migrations
-//! from the `./migrations` folder.
+//!   from the `./migrations` folder.
 
 /// Generate a `destination_path` file using migrations from the provided
 /// `migrations_path` folder.

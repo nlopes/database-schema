@@ -29,22 +29,15 @@ async fn migrate<P: AsRef<std::path::Path>>(
     connection_url: &str,
     migrations_path: P,
 ) -> Result<(), sqlx::Error> {
-    use sqlx::{
-        migrate::{Migrate, Migrator},
-        postgres::PgConnectOptions,
-        ConnectOptions,
-    };
+    use sqlx::{migrate::Migrator, postgres::PgConnectOptions, ConnectOptions};
     use std::str::FromStr;
 
     let mut conn = PgConnectOptions::from_str(connection_url)?
         .connect()
         .await?;
 
-    // Ensure the migrations table exists before we run the migrations
-    conn.ensure_migrations_table().await?;
-
     let migrator = Migrator::new(migrations_path.as_ref()).await?;
-    migrator.run_direct(&mut conn).await?;
+    migrator.run(&mut conn).await?;
     Ok(())
 }
 
@@ -83,8 +76,30 @@ mod tests {
             destination_filename.as_ref()
         ))?;
         let contents = std::fs::read_to_string(destination_path)?;
-        assert!(contents.contains(&expected));
+        let contents = normalize_dump_output(&contents);
+        let expected = normalize_dump_output(&expected);
+
+        for expected_fragment in expected
+            .split("\n\n")
+            .filter(|chunk| !chunk.trim().is_empty())
+        {
+            assert!(
+                contents.contains(expected_fragment),
+                "missing expected pg_dump fragment:\n\n{expected_fragment}\n\nactual dump:\n\n{contents}"
+            );
+        }
         Ok(())
+    }
+
+    fn normalize_dump_output(dump: &str) -> String {
+        dump.lines()
+            .filter(|line| {
+                !line.starts_with("\\restrict ")
+                    && !line.starts_with("\\unrestrict ")
+                    && *line != "SET transaction_timeout = 0;"
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     #[cfg(all(feature = "sqlx", feature = "postgres"))]

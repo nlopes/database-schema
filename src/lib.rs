@@ -115,8 +115,8 @@ impl DatabaseSchemaBuilder {
     /// * `postgres`: `postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]` - you can read more at [libpq docs](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING)
     ///
     /// * `sqlite`: `sqlite::memory:` in the case of `sqlx` and `:memory:` in the case of
-    /// `diesel` - you don't need to set this for `sqlite` as we auto-detect it as long as
-    /// you enable the `sqlite` feature.
+    ///   `diesel` - you don't need to set this for `sqlite` as we auto-detect it as long as
+    ///   you enable the `sqlite` feature.
     pub fn connection_url<S: Into<String>>(&mut self, connection_url: S) -> &mut Self {
         self.0.connection_url = ConnectionUrl(connection_url.into());
         self

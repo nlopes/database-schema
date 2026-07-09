@@ -126,22 +126,15 @@ async fn migrate<P: AsRef<std::path::Path>>(
     connection_url: &str,
     migrations_path: P,
 ) -> Result<(), sqlx::Error> {
-    use sqlx::{
-        migrate::{Migrate, Migrator},
-        mysql::MySqlConnectOptions,
-        ConnectOptions,
-    };
+    use sqlx::{migrate::Migrator, mysql::MySqlConnectOptions, ConnectOptions};
     use std::str::FromStr;
 
     let mut conn = MySqlConnectOptions::from_str(connection_url)?
         .connect()
         .await?;
 
-    // Ensure the migrations table exists before we run the migrations
-    conn.ensure_migrations_table().await?;
-
     let migrator = Migrator::new(migrations_path.as_ref()).await?;
-    migrator.run_direct(&mut conn).await?;
+    migrator.run(&mut conn).await?;
     Ok(())
 }
 

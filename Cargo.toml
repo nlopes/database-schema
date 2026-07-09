@@ -15,7 +15,7 @@ exclude = [".gitignore", ".github/", "README.tpl"]
 [workspace]
 members = [".", "examples/*"]
 default-members = ["."]
-resolver = "2"
+resolver = "3"
 
 [features]
 default = ["native-tls"]
@@ -34,12 +34,12 @@ rustls = ["sqlx?/tls-rustls"]
 [dependencies]
 async-std = { version = "1", optional = true } # this has to include default due to task::block_on usage
 chrono = { version = "0.4", features = ["clock"], default-features = false }
-diesel = { version = "2.1", optional = true, default-features = false }
-diesel_migrations = { version = "2.1", optional = true, default-features = false}
-http = "1.0.0"
+diesel = { version = "2.3", optional = true, default-features = false }
+diesel_migrations = { version = "2.3", optional = true, default-features = false}
+http = "1.4"
 percent-encoding = { version = "2.3", optional = true }
-sqlx = { version = "0.7", features = ["migrate", "macros"], optional = true, default-features = false }
-thiserror = "1"
+sqlx = { version = "0.9", features = ["migrate", "macros"], optional = true, default-features = false }
+thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true, default-features = false }
 tracing = { version = "0.1", default-features = false }
 url = { version = "2.5", optional = true }
