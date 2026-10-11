@@ -22,36 +22,17 @@ async fn fetch_structure(
 ) -> Result<String, diesel::result::Error> {
     use diesel::{sql_query, QueryableByName, RunQueryDsl};
 
-    #[allow(unused_qualifications)]
-    mod schema {
-        diesel::table! {
-            sqlite_schema(name) {
-                name -> Text,
-                mytype -> Text,
-                sql -> Text,
-            }
-        }
-    }
-
-    use schema::sqlite_schema;
-
     #[derive(Debug, QueryableByName)]
-    #[diesel(table_name = sqlite_schema)]
-    struct SqliteSchema {
-        name: String,
-        mytype: String,
-        sql: String,
-    }
+    struct SqliteSchema(
+        #[diesel(sql_type = diesel::sql_types::Text, column_name = name)] String,
+        #[diesel(sql_type = diesel::sql_types::Text, column_name = mytype)] String,
+        #[diesel(sql_type = diesel::sql_types::Text, column_name = sql)] String,
+    );
 
     let results: Vec<SqliteSchema> = sql_query(super::SQLITE_SCHEMA_QUERY).load(conn)?;
     Ok(results
         .iter()
-        .map(|r| {
-            format!(
-                "--\n--  Name: {}; Type: {}\n--\n{};\n",
-                r.name, r.mytype, r.sql
-            )
-        })
+        .map(|r| format!("--\n--  Name: {}; Type: {}\n--\n{};\n", r.0, r.1, r.2))
         .collect::<Vec<String>>()
         .join("\n"))
 }

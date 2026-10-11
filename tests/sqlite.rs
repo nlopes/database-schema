@@ -19,6 +19,66 @@ fn migrations(root: &Path, sql: &str) -> std::io::Result<PathBuf> {
 }
 
 #[tokio::test]
+async fn dump_restores_tables_views_indexes_and_triggers() -> Result<(), Box<dyn std::error::Error>>
+{
+    let root = tempfile::tempdir()?;
+    let migrations = migrations(
+        root.path(),
+        "CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT);
+         CREATE TABLE sqlitex_users (id INTEGER);
+         CREATE TABLE audit (id INTEGER);
+         CREATE VIEW user_emails AS SELECT email FROM users;
+         CREATE INDEX user_email ON users (email);
+         CREATE TRIGGER user_insert AFTER INSERT ON users BEGIN
+           INSERT INTO audit (id) VALUES (NEW.id);
+         END;",
+    )?;
+    let output = root.path().join("structure.sql");
+    generate(None, migrations, &output).await?;
+    let dump = std::fs::read_to_string(output)?;
+    assert!(dump.contains("CREATE TABLE sqlitex_users"));
+    assert!(!dump.contains("CREATE TABLE sqlite_sequence"));
+
+    #[cfg(feature = "diesel")]
+    {
+        use diesel::{connection::SimpleConnection, Connection, RunQueryDsl};
+        let mut restored = diesel::SqliteConnection::establish(":memory:")?;
+        restored.batch_execute(&dump)?;
+        restored.batch_execute("INSERT INTO users (email) VALUES ('test@example.org');")?;
+        restored.batch_execute("SELECT email FROM user_emails; DROP INDEX user_email;")?;
+        assert_eq!(
+            diesel::sql_query("UPDATE audit SET id = id").execute(&mut restored)?,
+            1
+        );
+        assert_eq!(
+            diesel::sql_query("UPDATE sqlitex_users SET id = id").execute(&mut restored)?,
+            0
+        );
+    }
+    #[cfg(feature = "sqlx")]
+    {
+        use sqlx::{Connection, Executor};
+        let mut restored = sqlx::SqliteConnection::connect("sqlite::memory:").await?;
+        let _ = restored
+            .execute(sqlx::raw_sql(sqlx::AssertSqlSafe(dump.as_str())))
+            .await?;
+        let _ = restored
+            .execute("INSERT INTO users (email) VALUES ('test@example.org');")
+            .await?;
+        let _ = restored.execute("SELECT email FROM user_emails;").await?;
+        let _ = restored.execute("DROP INDEX user_email;").await?;
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM audit")
+            .fetch_one(&mut restored)
+            .await?;
+        assert_eq!(count, 1);
+        let _: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlitex_users")
+            .fetch_one(&mut restored)
+            .await?;
+    }
+    Ok(())
+}
+
+#[tokio::test]
 async fn failed_migration_preserves_destination() -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
     let migrations = migrations(root.path(), "THIS IS INVALID SQL;")?;

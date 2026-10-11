@@ -1,16 +1,13 @@
 //! Implementation of the `sqlite` feature
 
-// The below select query was taken almost verbatim out of sqlite3 source code.
-// See https://sqlite.org/src/file?ci=trunk&name=src/shell.c.in&ln=10008 and also
-// the generated shell.c in this mirror
-// https://github.com/smparkes/sqlite/blob/8caf9219240123fbe6cff67b1e0da778c62d7621/src/shell.c#L2063
-// (they are somewhat out of sync but the query is the same)
-const SQLITE_SCHEMA_QUERY: &str = "SELECT name, type as mytype, sql
+// Tables and views must exist before their indexes and triggers are restored.
+const SQLITE_SCHEMA_QUERY: &str = r"SELECT name, type as mytype, sql
 FROM sqlite_schema
 WHERE
   sql NOTNULL AND
-  name NOT LIKE 'sqlite_%'
-ORDER BY tbl_name, type DESC, name";
+  name NOT LIKE 'sqlite\_%' ESCAPE '\'
+ORDER BY CASE type WHEN 'table' THEN 0 WHEN 'view' THEN 1 ELSE 2 END,
+  tbl_name, type, name";
 
 #[cfg(any(feature = "sqlx", feature = "diesel"))]
 pub(crate) async fn write_structure_sql<P: AsRef<std::path::Path>, Q: AsRef<std::path::Path>>(
