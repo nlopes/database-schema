@@ -8,4 +8,6 @@
   before their indexes and triggers.
 - Support macros in expression position and prefer Tokio when both runtimes are
   enabled.
+- Fix MySQL password authentication, socket options, and malformed URL errors.
 - Remove credentials from tracing logs and `Debug` output.
+- Keep MySQL and PostgreSQL dump passwords out of command arguments.

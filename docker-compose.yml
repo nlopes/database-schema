@@ -3,6 +3,7 @@
 services:
   postgres-14:
     image: postgres:14-alpine
+    command: ["postgres", "-c", "hba_file=/etc/postgresql/pg_hba.conf"]
     ports:
       - "127.0.0.1:5432:5432"
     environment:
@@ -10,6 +11,7 @@ services:
       - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
       - .data/postgresql-14/:/var/lib/postgresql
+      - ./fixtures/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
   mysql-8:
     image: mysql:8
     ports:

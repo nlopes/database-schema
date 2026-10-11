@@ -25,8 +25,8 @@ macros = []
 runtime-async-std = ["sqlx?/runtime-async-std", "dep:async-std"]
 runtime-tokio = ["sqlx?/runtime-tokio", "dep:tokio"]
 sqlite = ["sqlx?/sqlite", "diesel?/sqlite", "diesel_migrations?/sqlite"]
-mysql = ["sqlx?/mysql", "diesel?/mysql", "diesel_migrations?/mysql", "url", "percent-encoding"]
-postgres = ["sqlx?/postgres", "diesel?/postgres", "url", "percent-encoding"]
+mysql = ["sqlx?/mysql", "diesel?/mysql", "diesel_migrations?/mysql", "url", "percent-encoding", "dep:tempfile"]
+postgres = ["sqlx?/postgres", "diesel?/postgres", "percent-encoding", "dep:tempfile"]
 
 native-tls = ["sqlx?/tls-native-tls"]
 rustls = ["sqlx?/tls-rustls"]
@@ -38,6 +38,7 @@ diesel_migrations = { version = "2.3", optional = true, default-features = false
 percent-encoding = { version = "2.3", optional = true }
 sqlx = { version = "0.9", features = ["migrate", "macros"], optional = true, default-features = false }
 thiserror = "2"
+tempfile = { version = "3", optional = true }
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true, default-features = false }
 tracing = { version = "0.1", default-features = false }
 url = { version = "2.5", optional = true }
