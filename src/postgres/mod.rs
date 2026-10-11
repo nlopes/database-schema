@@ -52,7 +52,7 @@ async fn migrate<P: AsRef<std::path::Path>>(
     let migrations = FileBasedMigrations::from_path(migrations_path)?;
     let _ = HarnessWithOutput::write_to_stdout(&mut conn)
         .run_pending_migrations(migrations)
-        .map(|_| ());
+        .map_err(Error::MigrationRunError)?;
     Ok(())
 }
 

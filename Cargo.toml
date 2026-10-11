@@ -43,6 +43,7 @@ tracing = { version = "0.1", default-features = false }
 url = { version = "2.5", optional = true }
 
 [dev-dependencies]
+tempfile = "3"
 tokio = { version = "1", features = ["rt", "macros"], default-features = false }
 
 [package.metadata.docs.rs]

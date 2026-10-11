@@ -26,6 +26,10 @@ pub enum Error {
     #[error("DB error: {0}")]
     /// Any connection error when running migrations in `diesel`
     MigrationError(#[from] diesel_migrations::MigrationError),
+    #[cfg(feature = "diesel")]
+    #[error("Migration failed: {0}")]
+    /// A Diesel migration failed to run.
+    MigrationRunError(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[cfg(any(feature = "mysql", feature = "postgres"))]
     #[error("Unable to extract database name from connection string")]
     /// Extracting the database name from the connection string failed

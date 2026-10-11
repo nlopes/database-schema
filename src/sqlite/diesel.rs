@@ -12,7 +12,7 @@ pub(crate) async fn fetch_structure_sql<P: AsRef<std::path::Path>>(
     let migrations = FileBasedMigrations::from_path(migrations_path)?;
     let _ = HarnessWithOutput::write_to_stdout(&mut conn)
         .run_pending_migrations(migrations)
-        .map(|_| ());
+        .map_err(crate::Error::MigrationRunError)?;
 
     Ok(fetch_structure(&mut conn).await?)
 }
