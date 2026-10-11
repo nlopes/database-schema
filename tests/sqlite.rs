@@ -1,6 +1,6 @@
 #![cfg(feature = "sqlite")]
 
-use database_schema::generate;
+use database_schema::{generate, DatabaseSchema, DatabaseSchemaBuilder};
 use std::path::{Path, PathBuf};
 
 fn migrations(root: &Path, sql: &str) -> std::io::Result<PathBuf> {
@@ -86,5 +86,43 @@ async fn failed_migration_preserves_destination() -> Result<(), Box<dyn std::err
     std::fs::write(&output, "existing schema")?;
     assert!(generate(None, migrations, &output).await.is_err());
     assert_eq!(std::fs::read_to_string(output)?, "existing schema");
+    Ok(())
+}
+
+#[test]
+fn documented_defaults_generate_structure() -> Result<(), Box<dyn std::error::Error>> {
+    let root = tempfile::tempdir()?;
+    let _ = migrations(root.path(), "CREATE TABLE default_users (id INTEGER);")?;
+    let output = std::process::Command::new(std::env::current_exe()?)
+        .args(["--exact", "defaults_child", "--nocapture"])
+        .env("DATABASE_SCHEMA_TEST_DEFAULTS", "1")
+        .current_dir(root.path())
+        .output()?;
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(std::fs::read_to_string(root.path().join("structure.sql"))?
+        .contains("CREATE TABLE default_users"));
+    Ok(())
+}
+
+#[test]
+fn defaults_child() -> Result<(), Box<dyn std::error::Error>> {
+    if std::env::var_os("DATABASE_SCHEMA_TEST_DEFAULTS").is_none() {
+        return Ok(());
+    }
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    for schema in [
+        DatabaseSchema::default(),
+        DatabaseSchemaBuilder::default().build(),
+        DatabaseSchemaBuilder::new().build(),
+    ] {
+        runtime.block_on(schema.dump())?;
+        assert!(std::fs::read_to_string("structure.sql")?.contains("CREATE TABLE default_users"));
+    }
     Ok(())
 }

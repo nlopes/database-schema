@@ -80,11 +80,21 @@ impl Default for ConnectionUrl {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 struct DatabaseSchemaInner {
     connection_url: ConnectionUrl,
     migrations_path: std::path::PathBuf,
     destination_path: std::path::PathBuf,
+}
+
+impl Default for DatabaseSchemaInner {
+    fn default() -> Self {
+        Self {
+            connection_url: ConnectionUrl::default(),
+            migrations_path: "./migrations".into(),
+            destination_path: "./structure.sql".into(),
+        }
+    }
 }
 
 /// Builder for `DatabaseSchema`
