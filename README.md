@@ -115,9 +115,12 @@ temporary password option.
 
 ## Repeated generation
 
-With the same schema and client and server versions, SQLite and MySQL dumps are
-byte-identical across repeated generation. Paths and migration timestamps do not
-appear in the schema output.
+With unchanged database state and the same client and server versions, SQLite
+and MySQL dumps are byte-identical across repeated generation. Output paths and
+migration execution timestamps are not embedded in the schema output.
+
+MySQL schema dumps omit GTID replication positions. These positions describe
+server-wide transaction history and can change without a schema change.
 
 Recent PostgreSQL clients add random `\restrict` and `\unrestrict` keys to
 protect restoration with `psql`. These keys change between dumps; the rest of the

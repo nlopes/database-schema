@@ -16,3 +16,5 @@
 - Test runtime, TLS, and workspace example configurations in CI.
 - Restore server dumps and verify views, indexes, foreign keys, generated IDs,
   triggers, and functions with both migration drivers.
+- Omit MySQL GTID replication positions so unrelated transactions do not change
+  schema dumps.

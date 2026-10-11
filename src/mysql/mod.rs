@@ -81,6 +81,7 @@ fn dump_command(
     cmd.arg("--no-data")
         .arg("--routines")
         .arg("--skip-comments")
+        .arg("--set-gtid-purged=OFF")
         .arg("--result-file")
         .arg(destination_path)
         .arg("--host")
