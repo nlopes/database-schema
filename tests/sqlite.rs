@@ -90,6 +90,16 @@ async fn failed_migration_preserves_destination() -> Result<(), Box<dyn std::err
 }
 
 #[test]
+fn builder_and_schema_debug_redact_credentials() {
+    let mut builder = DatabaseSchemaBuilder::new();
+    let _ = builder.connection_url("sqlite://user:secret@localhost/example?password=other_secret");
+    for debug in [format!("{builder:?}"), format!("{:?}", builder.build())] {
+        assert!(!debug.contains("secret"));
+        assert!(!debug.contains("sqlite://"));
+    }
+}
+
+#[test]
 fn documented_defaults_generate_structure() -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
     let _ = migrations(root.path(), "CREATE TABLE default_users (id INTEGER);")?;

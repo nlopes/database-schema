@@ -69,7 +69,7 @@ impl FromStr for MySqlSslMode {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct MySqlConnectOptions {
     pub(crate) host: String,
     pub(crate) port: u16,
@@ -81,6 +81,12 @@ pub struct MySqlConnectOptions {
     pub(crate) ssl_ca: Option<PathBuf>,
     pub(crate) ssl_client_cert: Option<PathBuf>,
     pub(crate) ssl_client_key: Option<PathBuf>,
+}
+
+impl std::fmt::Debug for MySqlConnectOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("MySqlConnectOptions([REDACTED])")
+    }
 }
 
 impl Default for MySqlConnectOptions {

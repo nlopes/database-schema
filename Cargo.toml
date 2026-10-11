@@ -45,6 +45,7 @@ url = { version = "2.5", optional = true }
 [dev-dependencies]
 tempfile = "3"
 tokio = { version = "1", features = ["rt", "macros"], default-features = false }
+tracing = { version = "0.1", features = ["std"], default-features = false }
 
 [package.metadata.docs.rs]
 features = ["sqlite", "sqlx", "macros", "runtime-async-std"]

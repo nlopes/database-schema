@@ -64,8 +64,14 @@ pub use error::Error;
 #[derive(Debug, Default)]
 pub struct DatabaseSchema(DatabaseSchemaInner);
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct ConnectionUrl(String);
+
+impl std::fmt::Debug for ConnectionUrl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("ConnectionUrl([REDACTED])")
+    }
+}
 
 impl Default for ConnectionUrl {
     fn default() -> Self {

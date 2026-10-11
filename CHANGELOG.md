@@ -8,3 +8,4 @@
   before their indexes and triggers.
 - Support macros in expression position and prefer Tokio when both runtimes are
   enabled.
+- Remove credentials from tracing logs and `Debug` output.
