@@ -30,7 +30,7 @@ mod sqlite;
 mod mysql;
 
 #[cfg(feature = "postgres")]
-#[cfg_attr(docsrs, doc(cfg(feature = "mysql")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "postgres")))]
 mod postgres;
 
 #[cfg(all(
@@ -54,8 +54,14 @@ pub use error::Error;
 
 /// Entry point for using the crate and the result of calling [`DatabaseSchemaBuilder::build`].
 ///
-/// ```rust,ignore
+/// The default paths are `./migrations` and `./structure.sql`.
+///
+/// ```rust,no_run
+/// use database_schema::DatabaseSchemaBuilder;
+/// # async fn example() -> Result<(), database_schema::Error> {
 /// DatabaseSchemaBuilder::new().build().dump().await?;
+/// # Ok(())
+/// # }
 /// ```
 #[cfg(all(
     any(feature = "sqlite", feature = "postgres", feature = "mysql"),
@@ -138,13 +144,12 @@ impl DatabaseSchemaBuilder {
         self
     }
 
-    /// Set `migrations_dir` - this is the directory path where your migrations are stored.
+    /// Set the directory that contains the migrations.
     ///
-    /// By default we assume that the migrations are stored in the `migrations` directory
-    /// starting at the root of your project.
+    /// The default is `./migrations`, relative to the current directory.
     ///
-    /// We call `canonicalize()` on the path, so you can pass in a relative path. The
-    /// downside is that this call can fail.
+    /// Resolves the path to an absolute path. Returns an error if the directory
+    /// does not exist or cannot be accessed.
     pub fn migrations_dir<P: AsRef<std::path::Path>>(
         &mut self,
         migrations_dir: P,
@@ -153,9 +158,9 @@ impl DatabaseSchemaBuilder {
         Ok(self)
     }
 
-    /// Set `destination_path` - this is the path to the file where we'll store the SQL dump.
+    /// Set the path of the SQL dump file.
     ///
-    /// By default we assume `structure.sql` in the root of your project.
+    /// The default is `./structure.sql`, relative to the current directory.
     pub fn destination_path<P: AsRef<std::path::Path>>(
         &mut self,
         destination_path: P,
@@ -193,22 +198,50 @@ impl DatabaseSchema {
 /// Generate a `destination_path` SQL file using migrations from the `migrations_path`
 /// folder.
 ///
-/// Calling this function is strictly equivalent to:
+/// With no connection URL, this function is equivalent to:
 ///
-/// ```rust,ignore
-/// // This assumes you're using SQLite in memory.
-/// //
-/// // If you need to set up a `connection_url` you can use `DatabaseSchemaBuilder::connection_url`
-/// // before calling `build()`.
-///
+/// ```rust,no_run
+/// use database_schema::DatabaseSchemaBuilder;
+/// # async fn example() -> Result<(), database_schema::Error> {
+/// let migrations_path = "./migrations";
+/// let destination_path = "structure.sql";
 /// DatabaseSchemaBuilder::new()
 ///     .migrations_dir(migrations_path)?
 ///     .destination_path(destination_path)
 ///     .build()
 ///     .dump()
-///     .await
+///     .await?;
+/// # Ok(())
+/// # }
 /// ```
-/// Requires an executor to be available.
+///
+/// This SQLite example generates a dump with an executor:
+///
+/// ```rust
+/// # #[cfg(all(feature = "sqlite", any(feature = "runtime-async-std", feature = "runtime-tokio")))]
+/// # {
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// use database_schema::generate;
+/// # let output = tempfile::tempdir()?;
+/// # #[cfg(feature = "sqlx")]
+/// # let migrations = "fixtures/sqlx/sqlite/migrations";
+/// # #[cfg(feature = "diesel")]
+/// # let migrations = "fixtures/diesel/sqlite/migrations";
+/// # let destination = output.path().join("structure.sql");
+/// generate(None, migrations, &destination).await?;
+/// # assert!(std::fs::read_to_string(destination)?.contains("CREATE TABLE users"));
+/// # Ok(())
+/// # }
+/// # #[cfg(feature = "runtime-tokio")]
+/// # tokio::runtime::Builder::new_current_thread().enable_all().build()?.block_on(example())?;
+/// # #[cfg(all(feature = "runtime-async-std", not(feature = "runtime-tokio")))]
+/// # async_std::task::block_on(example())?;
+/// # }
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+///
+/// Requires an executor. Migration failures return an error before the dump file
+/// is written.
 #[cfg(all(
     any(feature = "sqlite", feature = "postgres", feature = "mysql"),
     any(feature = "sqlx", feature = "diesel")

@@ -12,3 +12,4 @@
 - Remove credentials from tracing logs and `Debug` output.
 - Keep MySQL and PostgreSQL dump passwords out of command arguments.
 - Verify repeated schema generation, including regeneration from fresh databases.
+- Correct usage documentation and compile its examples.

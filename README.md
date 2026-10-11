@@ -5,128 +5,143 @@
 [![crates.io](https://img.shields.io/crates/v/database-schema.svg)](https://crates.io/crates/database-schema)
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/nlopes/database-schema/blob/master/LICENSE)
 
-This crate provides a simple way to dump a database structure to a file, in SQL
-format.
+Generate a SQL schema file from database migrations. This crate takes inspiration
+from the Ruby on Rails [schema dump].
 
-It takes inspiration by the ruby on rails [schema dump].
+## Features
+
+Select exactly one database (`sqlite`, `mysql`, or `postgres`) and one migration
+driver (`sqlx` or `diesel`). SQLx also requires a runtime feature.
+
+| Database | Driver | Runtime |
+|----------|--------|---------|
+| `sqlite`, `mysql`, or `postgres` | `sqlx` | `runtime-async-std` or `runtime-tokio` |
+| `sqlite`, `mysql`, or `postgres` | `diesel` | Optional; required for macros |
+
+The `native-tls` feature is enabled by default. To use Rustls with SQLx, disable
+default features and enable `rustls`.
+
+```toml
+[dependencies]
+database-schema = { version = "0.2", features = ["sqlite", "sqlx", "runtime-tokio"] }
+```
+
+For Diesel:
+
+```toml
+[dependencies]
+database-schema = { version = "0.2", features = ["sqlite", "diesel"] }
+```
 
 ## Usage
 
-```rust,ignore
-use std::path::PathBuf;
+Run migrations, then write the database structure to a SQL file. The async API
+requires an executor.
 
-database_schema::generate_without_runtime_using_defaults!();
+```rust,no_run
+use database_schema::generate;
+
+# async fn example() -> Result<(), database_schema::Error> {
+generate(None, "./migrations", "structure.sql").await?;
+# Ok(())
+# }
 ```
 
+SQLite uses an in-memory database by default. MySQL and PostgreSQL require a
+running server and the `mysqldump` or `pg_dump` executable. Use a database reserved
+for schema generation: migrations change its structure.
 
-## Feature flags
+## Macros
 
-`database-schema` uses a set of [feature flags] to reduce the size of the libray and
-therefore your binary. The way one should use this package is to pick the right
-combination of feature flags for their use case. Below is a list of the available
-feature flags and the combinations that are recommended for each use case.
+Enable `macros` and a runtime feature to generate a schema without managing an
+executor. If both runtimes are enabled, the macros use Tokio. They return `()`
+and panic if schema generation fails. With `runtime-tokio`, call them outside an
+active Tokio runtime.
 
-- `sqlite`: Enables SQLite support.
-- `postgres`: Enables PostgreSQL support.
-- `mysql`: Enables MySQL support.
-- `sqlx`: Enables [sqlx] support.
-- `diesel`: Enables [diesel] support.
-
-### Feature flag matrix
-| Database | Query builder | Runtime |
-|----------|---------------|---------|
-| `sqlite` | `sqlx`        | `runtime-async-std` |
-| `sqlite` | `sqlx`        | `runtime-tokio` |
-| `sqlite` | `diesel`      | |
-| `mysql`  | `sqlx`        | `runtime-async-std` |
-| `mysql`  | `sqlx`        | `runtime-tokio` |
-| `mysql`  | `diesel`      | |
-| `postgres` | `sqlx`      | `runtime-async-std` |
-| `postgres` | `sqlx`      | `runtime-tokio` |
-| `postgres` | `diesel`    | |
-
-### Combining feature flags
-
-The following are the recommended feature flag combinations for each use case.
-
-First pick one of the following database feature flags:
-
-* `sqlite`
-* `mysql`
-* `postgres`
-
-Then pick one of the following database query building feature flags:
-
-* `sqlx`
-* `diesel`
-
-If you're using `sqlx`, you also have to pick one of the following runtime feature flags:
-
-* `runtime-async-std`
-* `runtime-tokio`
-
-### Example
+For a `build.rs` script, add the crate as a build dependency:
 
 ```toml
-[dependencies]
-database-schema = { version = "0.1", features = ["sqlite", "sqlx", "runtime-async-std"] }
+[build-dependencies]
+database-schema = { version = "0.2", features = ["sqlite", "diesel", "macros", "runtime-tokio"] }
 ```
 
-alternatively, if you're using `diesel`:
-```toml
-[dependencies]
-database-schema = { version = "0.1", features = ["sqlite", "diesel"] }
-```
-
-### Macros
-
-This crate also provides a set of macros that can be used to generate the SQL
-structure of a database at compile time. This is useful for generating the SQL from
-`build.rs`.
-
-
-```toml
-[dependencies]
-database-schema = { version = "0.1", features = ["sqlite", "diesel", "macros"] }
-```
-
-```rust,ignore
+```rust,no_run
+# #[cfg(feature = "macros")]
+# {
 use database_schema::generate_without_runtime;
 
-let sql = generate_without_runtime!("./migrations", "structure.sql");
+generate_without_runtime!("./migrations", "structure.sql");
+# }
 ```
 
-The above is strictly equivalent to calling:
+To use `./migrations` and `./structure.sql`:
 
-```rust,ignore
-use database_schema::generate_without_runtime_using_defaults;
-
-let sql = generate_without_runtime!();
+```rust,no_run
+# #[cfg(feature = "macros")]
+# {
+database_schema::generate_without_runtime_using_defaults!();
+# }
 ```
+
+The macros write the file when called. A call from `build.rs` writes it during
+the build.
 
 ## Customization
 
-```rust,ignore
+```rust,no_run
 use database_schema::DatabaseSchemaBuilder;
 
-let migrations_path = "db/migrations";
-let destination_path = "db/structure.sql";
-
-// This assumes you're using SQLite in memory.
-//
-// If you need to set up a `connection_url` you can use
-// `DatabaseSchemaBuilder::connection_url` before calling
-// `build()`.
-
+# async fn example() -> Result<(), database_schema::Error> {
 DatabaseSchemaBuilder::new()
-    .migrations_dir(migrations_path)?
-    .destination_path(destination_path)
+    .migrations_dir("db/migrations")?
+    .destination_path("db/structure.sql")
     .build()
     .dump()
-    .await
+    .await?;
+# Ok(())
+# }
 ```
 
-[feature flags]: https://doc.rust-lang.org/cargo/reference/manifest.html#the-features-section
-[sqlx]: https://docs.rs/sqlx/latest/sqlx/
-[diesel]: https://docs.rs/diesel/latest/diesel/
+The builder defaults to `./migrations` and `./structure.sql`. Use
+`connection_url` to set the connection URL for MySQL or PostgreSQL. Migration
+failures return an error before the dump file is written.
+
+Connection URLs are redacted in `Debug` output. Dump passwords are kept out of
+command arguments and tracing logs. MySQL uses a temporary client option file;
+PostgreSQL uses a temporary password file. PostgreSQL passwords with line breaks
+use the child process environment because its password file format cannot store
+them. MySQL also reads the usual client option files, which can override the
+temporary password option.
+
+## Repeated generation
+
+With the same schema and client and server versions, SQLite and MySQL dumps are
+byte-identical across repeated generation. Paths and migration timestamps do not
+appear in the schema output.
+
+Recent PostgreSQL clients add random `\restrict` and `\unrestrict` keys to
+protect restoration with `psql`. These keys change between dumps; the rest of the
+schema output stays the same. The crate keeps this protection. PostgreSQL
+[does not recommend a fixed key for general use][restrict key]. Client or server
+upgrades can also change dump headers or SQL formatting.
+
+## Local checks
+
+Run database tests with the isolated test services:
+
+```sh
+docker compose up -d --wait
+cargo test --features mysql,diesel --all-targets
+cargo test --features postgres,sqlx,runtime-tokio --all-targets
+docker compose down
+```
+
+The tests create temporary databases and accounts. PostgreSQL requires a password
+for those accounts; the local `root` account uses trust authentication.
+
+See `.github/workflows/ci.yml` for the complete feature matrix. Run its feature
+configurations separately; `--all-features` combines incompatible database and
+driver features.
+
 [schema dump]: https://guides.rubyonrails.org/active_record_migrations.html#schema-dumping-and-you
+[restrict key]: https://www.postgresql.org/docs/14/app-pgdump.html#APP-PGDUMP-OPTIONS
