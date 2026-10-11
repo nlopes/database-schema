@@ -12,6 +12,11 @@ services:
     volumes:
       - .data/postgresql-14/:/var/lib/postgresql
       - ./fixtures/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
   mysql-8:
     image: mysql:8
     ports:
@@ -20,3 +25,8 @@ services:
       - MYSQL_ALLOW_EMPTY_PASSWORD=true
     volumes:
       - .data/mysql-8/:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root --silent"]
+      interval: 2s
+      timeout: 5s
+      retries: 60

@@ -61,35 +61,46 @@ jobs:
     - name: Run cargo fmt
       run: rustup run ${{ matrix.toolchain }} cargo fmt --all -- --check
 
-    - name: Run test - sqlite | sqlx | runtime-async-std | macros
-      run: rustup run ${{ matrix.toolchain }} cargo test --features sqlite,sqlx,runtime-async-std,macros --all-targets --verbose
-
-    - name: Run test - sqlite | diesel | runtime-async-std | macros
-      run: rustup run ${{ matrix.toolchain }} cargo test --features sqlite,diesel,runtime-async-std,macros --all-targets --verbose
-
-    - name: Run test - sqlite | diesel
-      run: rustup run ${{ matrix.toolchain }} cargo test --features sqlite,diesel --all-targets --verbose
-
     - name: Start containers for database tests
-      run: docker compose -f "docker-compose.yml" up -d
+      run: docker compose -f "docker-compose.yml" up -d --wait --wait-timeout 180
 
-    - name: Run test - mysql | diesel
-      run: rustup run ${{ matrix.toolchain }} cargo test --features mysql,diesel --all-targets --verbose
-
-    - name: Run test - mysql | sqlx | runtime-async-std
-      run: rustup run ${{ matrix.toolchain }} cargo test --features mysql,sqlx,runtime-async-std --all-targets --verbose
-
-    - name: Run test - postgres | diesel
+    - name: Test database, driver, and runtime configurations
       run: |
         export PATH="/usr/lib/postgresql/${POSTGRESQL_VERSION}/bin:$PATH"
-        rustup run ${{ matrix.toolchain }} cargo test --features postgres,diesel --all-targets --verbose
-        psql "postgresql://root:@127.0.0.1:5432/postgres" -c "DROP TABLE __diesel_schema_migrations,diesel_users"
+        for features in \
+          sqlite,sqlx,runtime-async-std,macros \
+          sqlite,diesel,runtime-async-std,macros \
+          sqlite,diesel \
+          mysql,diesel \
+          mysql,sqlx,runtime-async-std \
+          postgres,diesel \
+          postgres,sqlx,runtime-async-std \
+          sqlite,sqlx,runtime-tokio,macros \
+          sqlite,diesel,runtime-tokio,macros \
+          mysql,sqlx,runtime-tokio,macros \
+          mysql,diesel,runtime-tokio,macros \
+          postgres,sqlx,runtime-tokio,macros \
+          postgres,diesel,runtime-tokio,macros \
+          sqlite,sqlx,runtime-tokio,runtime-async-std,macros \
+          sqlite,diesel,runtime-tokio,runtime-async-std,macros \
+          mysql,sqlx,runtime-tokio,runtime-async-std,macros \
+          mysql,diesel,runtime-tokio,runtime-async-std,macros \
+          postgres,sqlx,runtime-tokio,runtime-async-std,macros \
+          postgres,diesel,runtime-tokio,runtime-async-std,macros \
+        ; do
+          rustup run ${{ matrix.toolchain }} cargo test --features "$features" --all-targets --verbose
+          docker compose exec -T postgres-14 psql -U root postgres -c "DROP TABLE IF EXISTS __diesel_schema_migrations,diesel_users,_sqlx_migrations,sqlx_users"
+          docker compose exec -T mysql-8 mysql -u root mysql -e "DROP TABLE IF EXISTS __diesel_schema_migrations,diesel_users,_sqlx_migrations,sqlx_users"
+        done
 
-    - name: Run test - postgres | sqlx | runtime-async-std
+    - name: Test Rustls without default features
       run: |
         export PATH="/usr/lib/postgresql/${POSTGRESQL_VERSION}/bin:$PATH"
-        rustup run ${{ matrix.toolchain }} cargo test --features postgres,sqlx,runtime-async-std --all-targets --verbose
-        psql "postgresql://root:@127.0.0.1:5432/postgres" -c "DROP TABLE _sqlx_migrations,sqlx_users"
+        for database in sqlite mysql postgres; do
+          rustup run ${{ matrix.toolchain }} cargo test --no-default-features --features "$database,sqlx,runtime-tokio,macros,rustls" --all-targets --verbose
+          docker compose exec -T postgres-14 psql -U root postgres -c "DROP TABLE IF EXISTS __diesel_schema_migrations,diesel_users,_sqlx_migrations,sqlx_users"
+          docker compose exec -T mysql-8 mysql -u root mysql -e "DROP TABLE IF EXISTS __diesel_schema_migrations,diesel_users,_sqlx_migrations,sqlx_users"
+        done
 
     - name: Stop containers for database tests
       if: always()
@@ -98,7 +109,18 @@ jobs:
         sudo rm -rf .data/{postgresql-${POSTGRESQL_VERSION},mysql-8}
 
     - name: Run doc tests
-      run: rustup run ${{ matrix.toolchain }} cargo test --features sqlite,sqlx,runtime-async-std,macros --doc --verbose
+      run: |
+        for driver in sqlx diesel; do
+          for runtime in runtime-async-std runtime-tokio; do
+            rustup run ${{ matrix.toolchain }} cargo test --features "sqlite,$driver,$runtime,macros" --doc --verbose
+          done
+        done
+
+    - name: Check workspace examples
+      run: |
+        for package in mysql-diesel mysql-sqlx postgres-diesel postgres-sqlx sqlite-sqlx; do
+          rustup run ${{ matrix.toolchain }} cargo check -p "$package" --all-targets
+        done
 
     - name: Run clippy
       run: |
@@ -111,3 +133,10 @@ jobs:
         rustup run ${{ matrix.toolchain }} cargo clippy --features sqlite,diesel,runtime-async-std,macros --all-targets -- -Dwarnings
         rustup run ${{ matrix.toolchain }} cargo clippy --features postgres,diesel,runtime-async-std,macros --all-targets -- -Dwarnings
         rustup run ${{ matrix.toolchain }} cargo clippy --features mysql,diesel,runtime-async-std,macros --all-targets -- -Dwarnings
+        for database in sqlite mysql postgres; do
+          rustup run ${{ matrix.toolchain }} cargo clippy --features "$database,sqlx,runtime-tokio,macros" --all-targets -- -Dwarnings
+          rustup run ${{ matrix.toolchain }} cargo clippy --features "$database,diesel,runtime-tokio,macros" --all-targets -- -Dwarnings
+          rustup run ${{ matrix.toolchain }} cargo clippy --no-default-features --features "$database,sqlx,runtime-tokio,macros,rustls" --all-targets -- -Dwarnings
+        done
+        rustup run ${{ matrix.toolchain }} cargo clippy --features sqlite,sqlx,runtime-tokio,runtime-async-std,macros --all-targets -- -Dwarnings
+        rustup run ${{ matrix.toolchain }} cargo clippy --features sqlite,diesel,runtime-tokio,runtime-async-std,macros --all-targets -- -Dwarnings

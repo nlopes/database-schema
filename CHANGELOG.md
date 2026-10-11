@@ -13,3 +13,4 @@
 - Keep MySQL and PostgreSQL dump passwords out of command arguments.
 - Verify repeated schema generation, including regeneration from fresh databases.
 - Correct usage documentation and compile its examples.
+- Test runtime, TLS, and workspace example configurations in CI.
