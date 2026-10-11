@@ -53,15 +53,12 @@ async fn scalar(url: &str, sql: &str) -> Result<i64, Box<dyn std::error::Error>>
     {
         use diesel::{Connection, RunQueryDsl};
         #[derive(diesel::QueryableByName)]
-        struct Value {
-            #[diesel(sql_type = diesel::sql_types::BigInt)]
-            value: i64,
-        }
+        struct Value(#[diesel(sql_type = diesel::sql_types::BigInt, column_name = value)] i64);
         #[cfg(feature = "mysql")]
         let mut conn = diesel::MysqlConnection::establish(url)?;
         #[cfg(feature = "postgres")]
         let mut conn = diesel::PgConnection::establish(url)?;
-        Ok(diesel::sql_query(sql).get_result::<Value>(&mut conn)?.value)
+        Ok(diesel::sql_query(sql).get_result::<Value>(&mut conn)?.0)
     }
 }
 
