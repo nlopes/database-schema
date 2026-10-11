@@ -46,6 +46,34 @@ fn migration(path: &Path, version: u8, sql: &str) -> std::io::Result<()> {
     Ok(())
 }
 
+fn comparable_schema(dump: &str) -> String {
+    #[cfg(feature = "mysql")]
+    {
+        dump.to_owned()
+    }
+    #[cfg(feature = "postgres")]
+    {
+        let mut restrict_keys = Vec::new();
+        let mut unrestrict_keys = Vec::new();
+        let mut schema = String::new();
+        for line in dump.split_inclusive('\n') {
+            if let Some(key) = line.strip_prefix("\\restrict ") {
+                restrict_keys.push(key.trim_end());
+                schema.push_str("\\restrict <restore-key>\n");
+            } else if let Some(key) = line.strip_prefix("\\unrestrict ") {
+                unrestrict_keys.push(key.trim_end());
+                schema.push_str("\\unrestrict <restore-key>\n");
+            } else {
+                schema.push_str(line);
+            }
+        }
+        assert_eq!(restrict_keys, unrestrict_keys);
+        assert!(restrict_keys.len() <= 1);
+        assert!(restrict_keys.iter().all(|key| !key.is_empty()));
+        schema
+    }
+}
+
 #[tokio::test]
 async fn authenticated_dump_and_failed_migration() -> TestResult {
     let root = tempfile::tempdir()?;
@@ -87,7 +115,8 @@ async fn authenticated_dump_and_failed_migration() -> TestResult {
         migration(
             &migrations,
             1,
-            "CREATE TABLE schema_users (id INTEGER PRIMARY KEY);",
+            "CREATE TABLE schema_users (id INTEGER PRIMARY KEY, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+             INSERT INTO schema_users (id) VALUES (1);",
         )?;
         let output = root.path().join("structure.sql");
         #[cfg(feature = "mysql")]
@@ -134,6 +163,24 @@ async fn authenticated_dump_and_failed_migration() -> TestResult {
         }
         let dump = std::fs::read_to_string(&output)?;
         assert!(dump.contains("schema_users"));
+        let expected = comparable_schema(&dump);
+        for destination in [root.path().join("another-structure.sql"), output.clone()] {
+            database_schema::generate(Some(&url), &migrations, &destination).await?;
+            assert_eq!(comparable_schema(&std::fs::read_to_string(destination)?), expected);
+        }
+        #[cfg(feature = "mysql")]
+        {
+            admin(&format!("DROP DATABASE {database}")).await?;
+            admin(&format!("CREATE DATABASE {database}")).await?;
+        }
+        #[cfg(feature = "postgres")]
+        {
+            admin(&format!("DROP DATABASE {database} WITH (FORCE)")).await?;
+            admin(&format!("CREATE DATABASE {database} OWNER {database}")).await?;
+        }
+        database_schema::generate(Some(&url), &migrations, &output).await?;
+        let dump = std::fs::read_to_string(&output)?;
+        assert_eq!(comparable_schema(&dump), expected);
         migration(&migrations, 2, "THIS IS INVALID SQL;")?;
         assert!(database_schema::generate(Some(&url), &migrations, &output)
             .await

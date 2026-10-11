@@ -79,6 +79,26 @@ async fn dump_restores_tables_views_indexes_and_triggers() -> Result<(), Box<dyn
 }
 
 #[tokio::test]
+async fn schema_output_is_repeatable() -> Result<(), Box<dyn std::error::Error>> {
+    let mut dumps = Vec::new();
+    for round in 0..3 {
+        let root = tempfile::tempdir()?;
+        let migrations = migrations(
+            root.path(),
+            "CREATE TABLE users (id INTEGER PRIMARY KEY, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+             CREATE INDEX user_created_at ON users (created_at);
+             INSERT INTO users (id) VALUES (1);",
+        )?;
+        let output = root.path().join(format!("structure-{round}.sql"));
+        generate(None, migrations, &output).await?;
+        dumps.push(std::fs::read(output)?);
+    }
+    assert_eq!(dumps[0], dumps[1]);
+    assert_eq!(dumps[1], dumps[2]);
+    Ok(())
+}
+
+#[tokio::test]
 async fn failed_migration_preserves_destination() -> Result<(), Box<dyn std::error::Error>> {
     let root = tempfile::tempdir()?;
     let migrations = migrations(root.path(), "THIS IS INVALID SQL;")?;
