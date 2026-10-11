@@ -267,12 +267,9 @@ mod tests {
         let root = tempfile::tempdir()?;
         let destination_path = root.path().join("sqlx-mysql-structure.sql");
         let migrations_path = std::path::PathBuf::from("./fixtures/sqlx/mysql/migrations");
-        super::write_structure_sql(
-            super::DEFAULT_CONNECTION_URL,
-            migrations_path,
-            &destination_path,
-        )
-        .await?;
+        let connection_url = std::env::var("DATABASE_SCHEMA_TEST_MYSQL_URL")
+            .unwrap_or_else(|_| super::DEFAULT_CONNECTION_URL.into());
+        super::write_structure_sql(&connection_url, migrations_path, &destination_path).await?;
         let contents = std::fs::read_to_string(destination_path)?;
 
         assert!(contents.contains("CREATE TABLE `sqlx_users` (\n  `id` varchar(32) NOT NULL,\n  `email` text NOT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n"));
@@ -285,12 +282,9 @@ mod tests {
         let root = tempfile::tempdir()?;
         let destination_path = root.path().join("diesel-mysql-structure.sql");
         let migrations_path = std::path::PathBuf::from("./fixtures/diesel/mysql/migrations");
-        super::write_structure_sql(
-            super::DEFAULT_CONNECTION_URL,
-            migrations_path,
-            &destination_path,
-        )
-        .await?;
+        let connection_url = std::env::var("DATABASE_SCHEMA_TEST_MYSQL_URL")
+            .unwrap_or_else(|_| super::DEFAULT_CONNECTION_URL.into());
+        super::write_structure_sql(&connection_url, migrations_path, &destination_path).await?;
         let contents = std::fs::read_to_string(destination_path)?;
 
         assert!(contents.contains("CREATE TABLE `diesel_users` (\n  `id` varchar(32) NOT NULL,\n  `email` text NOT NULL,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;\n"));

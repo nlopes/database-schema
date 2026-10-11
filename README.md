@@ -142,6 +142,7 @@ The script requires Docker, Python 3, Rust, and the native libraries needed by
 Diesel. It creates temporary database volumes and runs matching dump and restore
 clients inside the server containers. The output and credential files use a
 shared temporary directory. Containers and volumes are removed when the run ends.
+The script uses available local ports so it can run alongside existing servers.
 
 CI tests PostgreSQL 14–18 and MySQL 8.4 and 9.7 with both migration drivers.
 The server fixtures cover views, indexes, foreign keys, generated IDs, triggers,

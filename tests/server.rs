@@ -9,8 +9,24 @@ const ADMIN_URL: &str = "mysql://root:@127.0.0.1:3306/mysql";
 #[cfg(feature = "postgres")]
 const ADMIN_URL: &str = "postgresql://root:@127.0.0.1:5432/postgres";
 
+fn port() -> u16 {
+    #[cfg(feature = "mysql")]
+    let (key, default) = ("DATABASE_SCHEMA_TEST_MYSQL_PORT", 3306);
+    #[cfg(feature = "postgres")]
+    let (key, default) = ("DATABASE_SCHEMA_TEST_POSTGRES_PORT", 5432);
+    std::env::var(key).map_or(default, |value| value.parse().expect("valid test port"))
+}
+
 async fn admin(sql: &str) -> TestResult {
-    execute(ADMIN_URL, sql).await
+    #[cfg(feature = "mysql")]
+    let key = "DATABASE_SCHEMA_TEST_MYSQL_URL";
+    #[cfg(feature = "postgres")]
+    let key = "DATABASE_SCHEMA_TEST_POSTGRES_URL";
+    execute(
+        &std::env::var(key).unwrap_or_else(|_| ADMIN_URL.into()),
+        sql,
+    )
+    .await
 }
 
 async fn execute(url: &str, sql: &str) -> TestResult {
@@ -80,7 +96,10 @@ fn restore(database: &str, dump: &Path) -> TestResult {
     #[cfg(feature = "postgres")]
     let output = std::process::Command::new("psql")
         .args(["-X", "--set=ON_ERROR_STOP=1", "--dbname"])
-        .arg(format!("postgresql://root:@127.0.0.1:5432/{database}"))
+        .arg(format!(
+            "postgresql://root:@127.0.0.1:{}/{database}",
+            port()
+        ))
         .arg("--command")
         .arg(format!("SET ROLE {database}"))
         .arg("--file")
@@ -88,12 +107,9 @@ fn restore(database: &str, dump: &Path) -> TestResult {
         .output()?;
     #[cfg(feature = "mysql")]
     let output = std::process::Command::new("mysql")
-        .args([
-            "--host=127.0.0.1",
-            "--port=3306",
-            "--user=root",
-            "--database",
-        ])
+        .args(["--host=127.0.0.1", "--user=root"])
+        .arg(format!("--port={}", port()))
+        .arg("--database")
         .arg(database)
         .stdin(std::fs::File::open(dump)?)
         .output()?;
@@ -168,13 +184,13 @@ async fn verify_restored_schema(url: &str) -> TestResult {
         let count = std::process::Command::new("mysql")
             .args([
                 "--host=127.0.0.1",
-                "--port=3306",
                 "--user=root",
                 "--batch",
                 "--skip-column-names",
                 "--database",
             ])
             .arg(url::Url::parse(url)?.path().trim_start_matches('/'))
+            .arg(format!("--port={}", port()))
             .args(["--execute", "CALL schema_user_count()"])
             .output()?;
         assert!(
@@ -277,10 +293,7 @@ async fn authenticated_dump_restores_and_repeats() -> TestResult {
         let prefix = "mysql";
         #[cfg(feature = "postgres")]
         let prefix = "postgresql";
-        #[cfg(feature = "mysql")]
-        let port = 3306;
-        #[cfg(feature = "postgres")]
-        let port = 5432;
+        let port = port();
         let encoded =
             percent_encoding::utf8_percent_encode(password, percent_encoding::NON_ALPHANUMERIC);
         let url = format!("{prefix}://{database}:{encoded}@127.0.0.1:{port}/{database}");

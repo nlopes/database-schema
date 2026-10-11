@@ -291,12 +291,9 @@ mod tests {
         let root = tempfile::tempdir()?;
         let destination_path = root.path().join(destination_filename.as_ref());
         let migrations_path = std::path::PathBuf::from(fixtures_path.as_ref()).join("migrations");
-        super::write_structure_sql(
-            super::DEFAULT_CONNECTION_URL,
-            migrations_path,
-            &destination_path,
-        )
-        .await?;
+        let connection_url = std::env::var("DATABASE_SCHEMA_TEST_POSTGRES_URL")
+            .unwrap_or_else(|_| super::DEFAULT_CONNECTION_URL.into());
+        super::write_structure_sql(&connection_url, migrations_path, &destination_path).await?;
         let expected = std::fs::read_to_string(format!(
             "./{}/{}",
             fixtures_path.as_ref(),

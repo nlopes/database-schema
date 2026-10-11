@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import shlex
+import socket
 import subprocess
 import tempfile
 
@@ -71,6 +72,7 @@ def main():
         env["PATH"] = str(binaries) + os.pathsep + env["PATH"]
         config = {"services": {}, "volumes": {}}
         selected = []
+        ports = set()
         for backend, version, service, data_path, commands in [
             ("postgres", args.postgres, "postgres-14", "/var/lib/postgresql", ["pg_dump", "psql"]),
             ("mysql", args.mysql, "mysql-8", "/var/lib/mysql", ["mysqldump", "mysql"]),
@@ -79,6 +81,27 @@ def main():
                 continue
             selected.append((backend, service))
             settings = copy.deepcopy(base["services"][service])
+            while True:
+                with socket.socket() as listener:
+                    listener.bind(("127.0.0.1", 0))
+                    port = listener.getsockname()[1]
+                if port not in ports:
+                    ports.add(port)
+                    break
+            settings["ports"] = [{"target": port, "published": str(port),
+                                  "host_ip": "127.0.0.1", "protocol": "tcp"}]
+            env["DATABASE_SCHEMA_TEST_" + backend.upper() + "_PORT"] = str(port)
+            if backend == "postgres":
+                settings["command"].extend(["-p", str(port)])
+                settings["healthcheck"]["test"] = [
+                    "CMD", "pg_isready", "-U", "root", "-d", "postgres", "-p", str(port)]
+                env["DATABASE_SCHEMA_TEST_POSTGRES_URL"] = f"postgresql://root:@127.0.0.1:{port}/postgres"
+            else:
+                settings["command"] = ["mysqld", "--port=" + str(port)]
+                settings["healthcheck"]["test"] = [
+                    "CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root",
+                    "--port=" + str(port), "--silent"]
+                env["DATABASE_SCHEMA_TEST_MYSQL_URL"] = f"mysql://root:@127.0.0.1:{port}/mysql"
             settings["volumes"] = [v for v in settings["volumes"] if v["target"] != data_path]
             settings["volumes"].extend([
                 {"type": "volume", "source": backend + "-data", "target": data_path},
@@ -120,8 +143,9 @@ def main():
                     + ["--features", feature, "--all-targets", "--verbose"], root, env)
                 for backend, service in selected:
                     sql = "DROP TABLE IF EXISTS __diesel_schema_migrations,diesel_users,_sqlx_migrations,sqlx_users"
-                    client_args = (["psql", "-U", "root", "postgres", "-c", sql]
-                                   if backend == "postgres" else ["mysql", "-u", "root", "mysql", "-e", sql])
+                    port = env["DATABASE_SCHEMA_TEST_" + backend.upper() + "_PORT"]
+                    client_args = (["psql", "-U", "root", "-p", port, "postgres", "-c", sql]
+                                   if backend == "postgres" else ["mysql", "-u", "root", "--port=" + port, "mysql", "-e", sql])
                     run(compose + ["exec", "-T", service] + client_args, root, env)
         except subprocess.CalledProcessError as error:
             status = error.returncode

@@ -22,3 +22,4 @@
   matrix in CI.
 - Omit MySQL GTID replication positions so unrelated transactions do not change
   schema dumps.
+- Use available local ports for isolated database tests.
