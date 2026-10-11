@@ -10,13 +10,17 @@ const ADMIN_URL: &str = "mysql://root:@127.0.0.1:3306/mysql";
 const ADMIN_URL: &str = "postgresql://root:@127.0.0.1:5432/postgres";
 
 async fn admin(sql: &str) -> TestResult {
+    execute(ADMIN_URL, sql).await
+}
+
+async fn execute(url: &str, sql: &str) -> TestResult {
     #[cfg(feature = "sqlx")]
     {
         use sqlx::{Connection, Executor};
         #[cfg(feature = "mysql")]
-        let mut conn = sqlx::MySqlConnection::connect(ADMIN_URL).await?;
+        let mut conn = sqlx::MySqlConnection::connect(url).await?;
         #[cfg(feature = "postgres")]
-        let mut conn = sqlx::PgConnection::connect(ADMIN_URL).await?;
+        let mut conn = sqlx::PgConnection::connect(url).await?;
         let _ = conn
             .execute(sqlx::raw_sql(sqlx::AssertSqlSafe(sql)))
             .await?;
@@ -25,10 +29,164 @@ async fn admin(sql: &str) -> TestResult {
     {
         use diesel::{connection::SimpleConnection, Connection};
         #[cfg(feature = "mysql")]
-        let mut conn = diesel::MysqlConnection::establish(ADMIN_URL)?;
+        let mut conn = diesel::MysqlConnection::establish(url)?;
         #[cfg(feature = "postgres")]
-        let mut conn = diesel::PgConnection::establish(ADMIN_URL)?;
+        let mut conn = diesel::PgConnection::establish(url)?;
         conn.batch_execute(sql)?;
+    }
+    Ok(())
+}
+
+async fn scalar(url: &str, sql: &str) -> Result<i64, Box<dyn std::error::Error>> {
+    #[cfg(feature = "sqlx")]
+    {
+        use sqlx::Connection;
+        #[cfg(feature = "mysql")]
+        let mut conn = sqlx::MySqlConnection::connect(url).await?;
+        #[cfg(feature = "postgres")]
+        let mut conn = sqlx::PgConnection::connect(url).await?;
+        Ok(sqlx::query_scalar(sqlx::AssertSqlSafe(sql))
+            .fetch_one(&mut conn)
+            .await?)
+    }
+    #[cfg(feature = "diesel")]
+    {
+        use diesel::{Connection, RunQueryDsl};
+        #[derive(diesel::QueryableByName)]
+        struct Value {
+            #[diesel(sql_type = diesel::sql_types::BigInt)]
+            value: i64,
+        }
+        #[cfg(feature = "mysql")]
+        let mut conn = diesel::MysqlConnection::establish(url)?;
+        #[cfg(feature = "postgres")]
+        let mut conn = diesel::PgConnection::establish(url)?;
+        Ok(diesel::sql_query(sql).get_result::<Value>(&mut conn)?.value)
+    }
+}
+
+async fn recreate(database: &str) -> TestResult {
+    #[cfg(feature = "mysql")]
+    {
+        admin(&format!("DROP DATABASE {database}")).await?;
+        admin(&format!("CREATE DATABASE {database}")).await?;
+    }
+    #[cfg(feature = "postgres")]
+    {
+        admin(&format!("DROP DATABASE {database} WITH (FORCE)")).await?;
+        admin(&format!("CREATE DATABASE {database} OWNER {database}")).await?;
+    }
+    Ok(())
+}
+
+fn restore(database: &str, dump: &Path) -> TestResult {
+    #[cfg(feature = "postgres")]
+    let output = std::process::Command::new("psql")
+        .args(["-X", "--set=ON_ERROR_STOP=1", "--dbname"])
+        .arg(format!("postgresql://root:@127.0.0.1:5432/{database}"))
+        .arg("--command")
+        .arg(format!("SET ROLE {database}"))
+        .arg("--file")
+        .arg(dump)
+        .output()?;
+    #[cfg(feature = "mysql")]
+    let output = std::process::Command::new("mysql")
+        .args([
+            "--host=127.0.0.1",
+            "--port=3306",
+            "--user=root",
+            "--database",
+        ])
+        .arg(database)
+        .stdin(std::fs::File::open(dump)?)
+        .output()?;
+    assert!(
+        output.status.success(),
+        "restore failed: {}{}\n\ndump:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+        std::fs::read_to_string(dump)?
+    );
+    Ok(())
+}
+
+async fn verify_restored_schema(url: &str) -> TestResult {
+    for table in ["schema_users", "schema_posts", "schema_audit"] {
+        assert_eq!(
+            scalar(url, &format!("SELECT COUNT(*) AS value FROM {table}")).await?,
+            0
+        );
+    }
+    execute(
+        url,
+        "INSERT INTO schema_users (email) VALUES ('restored@example.org');",
+    )
+    .await?;
+    assert_eq!(
+        scalar(
+            url,
+            "SELECT COUNT(*) AS value FROM schema_users WHERE id > 0 AND created_at IS NOT NULL"
+        )
+        .await?,
+        1
+    );
+    assert_eq!(
+        scalar(
+            url,
+            "SELECT COUNT(*) AS value FROM schema_user_emails WHERE email = 'restored@example.org'"
+        )
+        .await?,
+        1
+    );
+    assert_eq!(
+        scalar(url, "SELECT COUNT(*) AS value FROM schema_audit").await?,
+        1
+    );
+    assert!(
+        execute(url, "INSERT INTO schema_posts (user_id) VALUES (-1);")
+            .await
+            .is_err()
+    );
+    execute(
+        url,
+        "INSERT INTO schema_posts (user_id) SELECT id FROM schema_users;",
+    )
+    .await?;
+    assert_eq!(
+        scalar(
+            url,
+            "SELECT COUNT(*) AS value FROM schema_posts WHERE id > 0"
+        )
+        .await?,
+        1
+    );
+    #[cfg(feature = "postgres")]
+    {
+        assert_eq!(scalar(url, "SELECT schema_user_count() AS value").await?, 1);
+        assert_eq!(scalar(url, "SELECT COUNT(*) AS value FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'schema_users' AND indexname = 'schema_users_email'").await?, 1);
+    }
+    #[cfg(feature = "mysql")]
+    {
+        // Diesel's prepared statements cannot read a CALL result set.
+        let count = std::process::Command::new("mysql")
+            .args([
+                "--host=127.0.0.1",
+                "--port=3306",
+                "--user=root",
+                "--batch",
+                "--skip-column-names",
+                "--database",
+            ])
+            .arg(url::Url::parse(url)?.path().trim_start_matches('/'))
+            .args(["--execute", "CALL schema_user_count()"])
+            .output()?;
+        assert!(
+            count.status.success(),
+            "{}",
+            String::from_utf8_lossy(&count.stderr)
+        );
+        assert_eq!(String::from_utf8_lossy(&count.stdout).trim(), "1");
+        assert_eq!(scalar(url, "SELECT COUNT(*) AS value FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'schema_users' AND index_name = 'schema_users_email'").await?, 1);
     }
     Ok(())
 }
@@ -75,7 +233,7 @@ fn comparable_schema(dump: &str) -> String {
 }
 
 #[tokio::test]
-async fn authenticated_dump_and_failed_migration() -> TestResult {
+async fn authenticated_dump_restores_and_repeats() -> TestResult {
     let root = tempfile::tempdir()?;
     let suffix = root
         .path()
@@ -112,12 +270,11 @@ async fn authenticated_dump_and_failed_migration() -> TestResult {
     let result: TestResult = async {
         let migrations = root.path().join("migrations");
         std::fs::create_dir_all(&migrations)?;
-        migration(
-            &migrations,
-            1,
-            "CREATE TABLE schema_users (id INTEGER PRIMARY KEY, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-             INSERT INTO schema_users (id) VALUES (1);",
-        )?;
+        #[cfg(feature = "mysql")]
+        let schema = include_str!("../fixtures/server/mysql/schema.sql");
+        #[cfg(feature = "postgres")]
+        let schema = include_str!("../fixtures/server/postgres/schema.sql");
+        migration(&migrations, 1, schema)?;
         let output = root.path().join("structure.sql");
         #[cfg(feature = "mysql")]
         let prefix = "mysql";
@@ -168,16 +325,7 @@ async fn authenticated_dump_and_failed_migration() -> TestResult {
             database_schema::generate(Some(&url), &migrations, &destination).await?;
             assert_eq!(comparable_schema(&std::fs::read_to_string(destination)?), expected);
         }
-        #[cfg(feature = "mysql")]
-        {
-            admin(&format!("DROP DATABASE {database}")).await?;
-            admin(&format!("CREATE DATABASE {database}")).await?;
-        }
-        #[cfg(feature = "postgres")]
-        {
-            admin(&format!("DROP DATABASE {database} WITH (FORCE)")).await?;
-            admin(&format!("CREATE DATABASE {database} OWNER {database}")).await?;
-        }
+        recreate(&database).await?;
         database_schema::generate(Some(&url), &migrations, &output).await?;
         let dump = std::fs::read_to_string(&output)?;
         assert_eq!(comparable_schema(&dump), expected);
@@ -186,6 +334,9 @@ async fn authenticated_dump_and_failed_migration() -> TestResult {
             .await
             .is_err());
         assert_eq!(std::fs::read_to_string(&output)?, dump);
+        recreate(&database).await?;
+        restore(&database, &output)?;
+        verify_restored_schema(&url).await?;
         Ok(())
     }
     .await;

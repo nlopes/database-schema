@@ -14,3 +14,5 @@
 - Verify repeated schema generation, including regeneration from fresh databases.
 - Correct usage documentation and compile its examples.
 - Test runtime, TLS, and workspace example configurations in CI.
+- Restore server dumps and verify views, indexes, foreign keys, generated IDs,
+  triggers, and functions with both migration drivers.
