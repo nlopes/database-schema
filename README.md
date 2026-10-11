@@ -133,14 +133,29 @@ upgrades can also change dump headers or SQL formatting.
 Run database tests with the isolated test services:
 
 ```sh
-docker compose up -d --wait
-cargo test --features mysql,diesel --all-targets
-cargo test --features postgres,sqlx,runtime-tokio --all-targets
-docker compose down
+python3 scripts/test-databases.py --postgres 18
+python3 scripts/test-databases.py --mysql 9.7
+python3 scripts/test-databases.py --postgres 14 --mysql 8.4 --full
 ```
 
-The tests create temporary databases and accounts. PostgreSQL requires a password
-for those accounts; the local `root` account uses trust authentication.
+The script requires Docker, Python 3, Rust, and the native libraries needed by
+Diesel. It creates temporary database volumes and runs matching dump and restore
+clients inside the server containers. The output and credential files use a
+shared temporary directory. Containers and volumes are removed when the run ends.
+
+CI tests PostgreSQL 14–18 and MySQL 8.4 and 9.7 with both migration drivers.
+The server fixtures cover views, indexes, foreign keys, generated IDs, triggers,
+and functions. Each configuration checks password authentication, migration
+failures, repeated dumps, and restoration into an empty database.
+
+The full Rust feature matrix runs separately on stable and nightly. Use
+`--toolchain nightly` to select nightly locally. Version compatibility jobs run
+on stable and compare repeated output within each client/server version pair.
+
+For manual tests, `docker-compose.yml` defaults to PostgreSQL 14 and MySQL 8.4.
+Set `POSTGRESQL_VERSION` or `MYSQL_VERSION` to select another image. The local
+PostgreSQL `root` account uses trust authentication; temporary test accounts
+require a password.
 
 See `.github/workflows/ci.yml` for the complete feature matrix. Run its feature
 configurations separately; `--all-features` combines incompatible database and

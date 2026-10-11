@@ -18,5 +18,7 @@
   triggers, and functions with both migration drivers.
 - Use configurable database images and isolated test volumes with matching dump
   and restore clients.
+- Test PostgreSQL 14–18 and MySQL 8.4 and 9.7 separately from the Rust feature
+  matrix in CI.
 - Omit MySQL GTID replication positions so unrelated transactions do not change
   schema dumps.

@@ -13,18 +13,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.nightly }}
-    env:
-      POSTGRESQL_VERSION: ${{ matrix.postgresql-version }}
-
     strategy:
       fail-fast: false
       matrix:
-        postgresql-version: [14]
         toolchain: [ 'stable' ]
         nightly: [false]
         include:
-          - postgresql-version: 14
-            toolchain: 'nightly'
+          - toolchain: 'nightly'
             nightly: true
 
     steps:
@@ -41,14 +36,10 @@ jobs:
         rustup run ${{ matrix.toolchain }} cargo --version --verbose
         rustup run ${{ matrix.toolchain }} cargo clippy --version
         rustup run ${{ matrix.toolchain }} cargo fmt --version
-    - name: Install PostgreSQL client version matching docker-compose
-      env:
-        POSTGRESQL_VERSION: ${{ matrix.postgresql-version }}
+    - name: Install native database libraries
       run: |
-        sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
         sudo apt-get update
-        sudo apt-get -y install --no-install-recommends "postgresql-client-${POSTGRESQL_VERSION}"
+        sudo apt-get install -y libpq-dev default-libmysqlclient-dev
 
     - name: Cache cargo registry
       uses: actions/cache@v3
@@ -61,52 +52,8 @@ jobs:
     - name: Run cargo fmt
       run: rustup run ${{ matrix.toolchain }} cargo fmt --all -- --check
 
-    - name: Start containers for database tests
-      run: docker compose -f "docker-compose.yml" up -d --wait --wait-timeout 180
-
-    - name: Test database, driver, and runtime configurations
-      run: |
-        export PATH="/usr/lib/postgresql/${POSTGRESQL_VERSION}/bin:$PATH"
-        for features in \
-          sqlite,sqlx,runtime-async-std,macros \
-          sqlite,diesel,runtime-async-std,macros \
-          sqlite,diesel \
-          mysql,diesel \
-          mysql,sqlx,runtime-async-std \
-          postgres,diesel \
-          postgres,sqlx,runtime-async-std \
-          sqlite,sqlx,runtime-tokio,macros \
-          sqlite,diesel,runtime-tokio,macros \
-          mysql,sqlx,runtime-tokio,macros \
-          mysql,diesel,runtime-tokio,macros \
-          postgres,sqlx,runtime-tokio,macros \
-          postgres,diesel,runtime-tokio,macros \
-          sqlite,sqlx,runtime-tokio,runtime-async-std,macros \
-          sqlite,diesel,runtime-tokio,runtime-async-std,macros \
-          mysql,sqlx,runtime-tokio,runtime-async-std,macros \
-          mysql,diesel,runtime-tokio,runtime-async-std,macros \
-          postgres,sqlx,runtime-tokio,runtime-async-std,macros \
-          postgres,diesel,runtime-tokio,runtime-async-std,macros \
-        ; do
-          rustup run ${{ matrix.toolchain }} cargo test --features "$features" --all-targets --verbose
-          docker compose exec -T postgres-14 psql -U root postgres -c "DROP TABLE IF EXISTS __diesel_schema_migrations,diesel_users,_sqlx_migrations,sqlx_users"
-          docker compose exec -T mysql-8 mysql -u root mysql -e "DROP TABLE IF EXISTS __diesel_schema_migrations,diesel_users,_sqlx_migrations,sqlx_users"
-        done
-
-    - name: Test Rustls without default features
-      run: |
-        export PATH="/usr/lib/postgresql/${POSTGRESQL_VERSION}/bin:$PATH"
-        for database in sqlite mysql postgres; do
-          rustup run ${{ matrix.toolchain }} cargo test --no-default-features --features "$database,sqlx,runtime-tokio,macros,rustls" --all-targets --verbose
-          docker compose exec -T postgres-14 psql -U root postgres -c "DROP TABLE IF EXISTS __diesel_schema_migrations,diesel_users,_sqlx_migrations,sqlx_users"
-          docker compose exec -T mysql-8 mysql -u root mysql -e "DROP TABLE IF EXISTS __diesel_schema_migrations,diesel_users,_sqlx_migrations,sqlx_users"
-        done
-
-    - name: Stop containers for database tests
-      if: always()
-      run: |
-        docker compose -f "docker-compose.yml" down --volumes
-        sudo rm -rf .data/{postgresql-${POSTGRESQL_VERSION},mysql-8}
+    - name: Test database, driver, runtime, and TLS configurations
+      run: python3 scripts/test-databases.py --postgres 14 --mysql 8.4 --toolchain "${{ matrix.toolchain }}" --full
 
     - name: Run doc tests
       run: |
@@ -140,3 +87,41 @@ jobs:
         done
         rustup run ${{ matrix.toolchain }} cargo clippy --features sqlite,sqlx,runtime-tokio,runtime-async-std,macros --all-targets -- -Dwarnings
         rustup run ${{ matrix.toolchain }} cargo clippy --features sqlite,diesel,runtime-tokio,runtime-async-std,macros --all-targets -- -Dwarnings
+
+  database-compatibility:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - database: postgres
+            version: '14'
+          - database: postgres
+            version: '15'
+          - database: postgres
+            version: '16'
+          - database: postgres
+            version: '17'
+          - database: postgres
+            version: '18'
+          - database: mysql
+            version: '8.4'
+          - database: mysql
+            version: '9.7'
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install Rust
+      run: rustup update stable
+    - name: Install native database libraries
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libpq-dev default-libmysqlclient-dev
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: rust_stable-cargo-${{ hashFiles('**/Cargo.toml') }}
+    - name: Test matching database and dump client versions
+      run: python3 scripts/test-databases.py --${{ matrix.database }} "${{ matrix.version }}"
