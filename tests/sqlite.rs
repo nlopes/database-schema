@@ -124,5 +124,22 @@ fn defaults_child() -> Result<(), Box<dyn std::error::Error>> {
         runtime.block_on(schema.dump())?;
         assert!(std::fs::read_to_string("structure.sql")?.contains("CREATE TABLE default_users"));
     }
+    #[cfg(feature = "macros")]
+    {
+        std::fs::remove_file("structure.sql")?;
+        database_schema::generate_without_runtime_using_defaults!();
+        assert!(std::fs::read_to_string("structure.sql")?.contains("CREATE TABLE default_users"));
+    }
+    Ok(())
+}
+
+#[cfg(feature = "macros")]
+#[test]
+fn macro_works_in_expression_position() -> Result<(), Box<dyn std::error::Error>> {
+    let root = tempfile::tempdir()?;
+    let migrations = migrations(root.path(), "CREATE TABLE macro_users (id INTEGER);")?;
+    let output = root.path().join("structure.sql");
+    let _: () = database_schema::generate_without_runtime!(migrations, &output);
+    assert!(std::fs::read_to_string(output)?.contains("CREATE TABLE macro_users"));
     Ok(())
 }

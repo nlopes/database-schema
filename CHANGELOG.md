@@ -6,3 +6,5 @@
 - Use `./migrations` and `./structure.sql` as the builder defaults.
 - Keep valid SQLite names such as `sqlitex_users` and restore tables and views
   before their indexes and triggers.
+- Support macros in expression position and prefer Tokio when both runtimes are
+  enabled.
